@@ -137,6 +137,39 @@ const UserController = {
         Response.send(users);
 
 	},
+	getAllUsersSkills: async function(Request, Response) {
+        try {
+
+            let page = Request.query.page;
+            let offset = 0;
+
+            if(page) {
+                offset = (page-1)*10;
+            }
+
+
+            UserSkill.findAll({
+                include: [
+                    {
+                        model:Skill,
+                        include: [SkillCategory]
+                    },
+                    {
+                        model: User
+                    }
+                ],
+                limit:10,
+                offset:offset,
+            }).then( skills => {
+
+                Response.send(skills);
+            })
+        } catch (Error) {
+
+            Response.status(400);
+            Response.send({success:false, error: Error});
+        }
+	},
 	getUserSkills: async function(Request, Response) {
 
 		try {
@@ -148,13 +181,20 @@ const UserController = {
 				offset = (page-1)*10;
 			}
 
+			let where = {};
+
+			if(Request.params.id) {
+				where = {
+                    userId:Request.params.id
+				}
+			}
+
             Skill.findAll({
                 include: [
                     {
                         model:UserSkill,
-                        where:{
-                            userId:Request.params.id
-                        },
+                        where:where,
+						include: [User]
                     },
                     {
                         model: SkillCategory
@@ -222,6 +262,8 @@ const UserController = {
 								include: SkillCategory
 							}
 						]
+					},{
+                		model: User
 					}
 				]
             }).then( skills => {

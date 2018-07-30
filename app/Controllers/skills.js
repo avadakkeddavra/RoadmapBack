@@ -294,7 +294,22 @@ skills.getSkillsByCategories = async function(Request, Response){
 skills.getLogs = async function(Request, Response) {
 
     Joi.validate(Request.body, SkillsSchema.logs, function(Error, Data) {
+
+
+
         if(!Error) {
+
+            var page = 0;
+
+            if(Request.query.page) {
+                page = Request.query.page;
+            }
+
+            var offset = 0;
+
+            if(page > 1){
+                offset = (page - 1)*10;
+            }
 
             if(Object.keys(Data).indexOf('createdAt') !== -1)
             {
@@ -307,19 +322,31 @@ skills.getLogs = async function(Request, Response) {
             {
                 Data.skill_new = {
                     [Op.between]: [Data.from, Data.to],
-                }
+                };
                 delete Data.from;
                 delete Data.to;
             }
+
+            let UserSkillsWhere = {};
+            if(Data.skillId) {
+                UserSkillsWhere.skillId = Data.skillId;
+            }
+
+            let where = Data;
+
+            delete where.skillId;
+            console.log(where);
+
             skillLogs.findAll({
-                where: Data,
+                where: where,
                 include: [
                     {
                         model:User
                     },
                     {
                         model:UserSkills,
-                        attributes:['mark'],
+                        attributes:['mark','skillId'],
+                        where:UserSkillsWhere,
                         include:[
                             {
                                 model:Skills,
@@ -333,9 +360,18 @@ skills.getLogs = async function(Request, Response) {
                             }
                         ]
                     }
+                ],
+                limit: 10,
+                offset: offset,
+                order: [
+                    ['userId','DESC']
                 ]
-            }).then(skills => {
-                Response.send(skills)
+            }).then( async (skills) => {
+
+                let total = await skillLogs.count({
+                    where: Data
+                });
+                Response.send({skills:skills, total: total})
             })
 
         } else {
@@ -343,6 +379,106 @@ skills.getLogs = async function(Request, Response) {
             Response.send({success:false, error: Error});
         }
     })
-}
+};
 
+skills.compare = async function(Request, Response) {
+
+    let where = {
+        userId: Request.body.userId
+    };
+
+    if(Request.body.skills.length !== 0) {
+        where.skillId = Request.body.skills;
+    }
+
+    User.findById(Request.body.userId, {
+        where: where,
+        include: [
+            {
+                model:UserSkills,
+                where: where,
+                include: [Skills]
+            }
+        ]
+    }).then( async user => {
+
+
+        let where = {
+            userId: {
+                [Op.ne]: Request.body.userId,
+            }
+        };
+        if(Request.body.skills.length !== 0) {
+            where.skillId = Request.body.skills;
+        }
+
+        let skills = await UserSkills.findAll({
+            where:where,
+            include:[
+                Skills,
+                {
+                    model:User,
+                    include:{
+                        model:UserSkills,
+                        where:where,
+                        include: [Skills]
+                    }
+                }
+            ]
+        });
+
+        let compares = [];
+
+        for(let userSkills of user.userSkills)
+        {
+            for(let skill of skills) {
+
+                if( (userSkills.skill && skill.skill) &&
+                    userSkills.skill.title === skill.skill.title &&
+                    userSkills.mark < skill.mark
+                ) {
+                    let user = findUser(compares, skill.user);
+
+                    if(user === true) {
+                        let compareUser = skill.user;
+                        compareUser.dataValues.compareSkills = [];
+                        compareUser.dataValues.compareSkills.push({
+                            skill:skill.skill,
+                            mark:skill.mark
+                        });
+
+                        compares.push(compareUser);
+                    } else {
+                        compares[user].dataValues.compareSkills.push({
+                            skill:skill.skill,
+                            mark:skill.mark
+                        });
+                    }
+
+                    break;
+                }else{
+                    continue;
+                }
+            }
+        }
+
+        Response.send({user:user,compare:compares});
+
+    });
+
+
+};
+
+function findUser(data, user) {
+
+    for(let key in data)
+    {
+        let item = data[key];
+        if(item.name === user.name) {
+            return key;
+        }
+    }
+
+    return true;
+}
 module.exports = skills;

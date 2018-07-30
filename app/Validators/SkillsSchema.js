@@ -16,12 +16,12 @@ const CreateSchema = Joi.object({
 
 const GetLogs = Joi.object({
 
-    skillId: Joi.number().min(1),
-    userId: Joi.number().min(1),
+    skillId: Joi.any(),
+    userId: Joi.any(),
     category_id: Joi.number().min(1),
     createdAt: Joi.string(),
     from: Joi.number(),
-    to: Joi.number()
+    to: Joi.number(),
 });
 
 module.exports = {

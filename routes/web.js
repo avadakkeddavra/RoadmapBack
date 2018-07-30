@@ -52,6 +52,7 @@ router.get('/skills/categories/list', SkillsController.getSkillsByCategories);
 router.get('/skills/check_admin', authMiddleware.auth, UserController.isAdmin);
 router.get('/skills/matched',authMiddleware.auth.bind(authMiddleware),authMiddleware.admin, SkillsController.matched);
 router.post('/skills/logs', authMiddleware.auth.bind(authMiddleware), SkillsController.getLogs);
+router.post('/skills/compare', authMiddleware.auth, SkillsController.compare);
 router.get('/skills/:id', authMiddleware.auth.bind(authMiddleware),authMiddleware.admin, SkillsController.getSkills);
 
 
@@ -62,6 +63,7 @@ router.get('/skills/:id', authMiddleware.auth.bind(authMiddleware),authMiddlewar
 *
 * */
 router.get('/users', authMiddleware.auth, UserController.getAllUsers);
+router.get('/user/allskills', authMiddleware.auth, UserController.getAllUsersSkills);
 router.get('/user/:id', authMiddleware.auth.bind(authMiddleware), UserController.getUser);
 router.get('/user/:id/skillslist', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkills);
 router.get('/user/:user_id/skills/:id', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillById);
