@@ -43,14 +43,14 @@ router.get('/category', authMiddleware.auth, CategoryController.getAll);
 *   SKILLS FUNCTIONS ROUTES
 *
 * */
-router.put('/skills', authMiddleware.auth.bind(authMiddleware),authMiddleware.admin, SkillsController.addSkills); // update User skill fields
+router.put('/skills', authMiddleware.auth.bind(authMiddleware), SkillsController.addSkills); // update User skill fields
 router.post('/skills', authMiddleware.auth, SkillsController.createNewSkill);
 router.delete('/skills/:id', authMiddleware.auth, authMiddleware.admin, SkillsController.delete);
 router.get('/skills/categories', authMiddleware.auth, SkillsController.getCategoriesSkills);
 router.get('/skills/list', SkillsController.getSkillsList);
 router.get('/skills/categories/list', SkillsController.getSkillsByCategories);
 router.get('/skills/check_admin', authMiddleware.auth, UserController.isAdmin);
-router.get('/skills/matched',authMiddleware.auth.bind(authMiddleware),authMiddleware.admin, SkillsController.matched);
+router.get('/skills/matched',authMiddleware.auth.bind(authMiddleware), SkillsController.matched);
 router.post('/skills/logs', authMiddleware.auth.bind(authMiddleware), SkillsController.getLogs);
 router.post('/skills/compare', authMiddleware.auth, SkillsController.compare);
 router.get('/skills/:id', authMiddleware.auth.bind(authMiddleware),authMiddleware.admin, SkillsController.getSkills);
@@ -70,5 +70,7 @@ router.get('/user/:user_id/skills/:id', authMiddleware.auth.bind(authMiddleware)
 router.get('/user/:id/logs', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillsLogs);
 router.get('/user/:user_id/logs/skills/:id', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillLogById);
 router.get('/user/:id/stat', authMiddleware.auth, UserController.getCurrentUserInfo);
+router.post('/user/settings', authMiddleware.auth, UserController.setSettings)
+
 
 module.exports = router;

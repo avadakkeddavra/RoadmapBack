@@ -24,6 +24,7 @@ db.Sequelize = Sequelize;
 
 db.users.hasMany(db.userSkills, {foreignKey:'userId'});
 db.users.hasMany(db.user_skills_logs, {foreignKey: 'userId'});
+db.users.hasOne(db.user_settings, {foreignKey: 'userId'});
 
 db.skills.belongsTo(db.skillsCategories, { foreignKey: 'categoryId' });
 db.skills.hasOne(db.userSkills, { foreignKey: 'skillId' });

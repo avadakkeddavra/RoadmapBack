@@ -330,6 +330,9 @@ const UserController = {
 
             Response.send({success:true,data: user})
 		})
+	},
+	setSettings: async function(Request, Response) {
+		Response.send(Request.body);
 	}
 };
 
