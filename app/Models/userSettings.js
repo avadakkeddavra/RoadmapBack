@@ -11,12 +11,20 @@ module.exports = function (sequelize,Sequelize) {
         },
         dev_years: {
             type: Sequelize.INTEGER,
-            allowNull: false
+            allowNull: true
         },
         projects_completed: {
             type: Sequelize.INTEGER,
-            allowNull: false
+            allowNull: true
         },
+        createdAt: {
+            type: Sequelize.DATE,
+            defaultValue: sequelize.literal('CURRENT_TIMESTAMP')
+        },
+        updatedAt: {
+            type: Sequelize.DATE,
+            defaultValue: sequelize.literal('CURRENT_TIMESTAMP')
+        }
     });
 };
 

@@ -132,7 +132,13 @@ skills.addSkills = async function (request, response)
 
 skills.getSkillsList = function (request, response)
 {
-    Skills.findAll().then((skills) =>
+    Skills.findAll({
+        include: [
+            {
+                model:SkillsCategories
+            }
+        ]
+    }).then((skills) =>
     {
         response.status(200);
         responseHelper.setResponseData(skills);
@@ -381,6 +387,26 @@ skills.getLogs = async function(Request, Response) {
     })
 };
 
+skills.sort = async function(Request, Response) {
+  UserSkills.findAll({
+      where: {
+          userId: Request.body.userId
+      },
+      include: [
+          {
+            model: Skills,
+            where: {
+                categoryId: Request.body.id
+            }
+          }
+      ]
+  }).then(skills => {
+      Response.send(skills);
+  }).catch(Error => {
+      Response.send(Error.message)
+  })
+};
+
 skills.compare = async function(Request, Response) {
 
     let where = {
@@ -467,6 +493,25 @@ skills.compare = async function(Request, Response) {
     });
 
 
+};
+
+skills.search = function(Request, Response) {
+  Skills.findAll({
+      where:{
+          title: {
+              [Op.like]: '%'+Request.body.title+'%'
+          }
+      },
+      include: [
+          {
+              model:SkillsCategories
+          }
+      ]
+  }).then(skills => {
+      Response.send(skills);
+  }).catch( Error => {
+      Response.send({error: Error.message});
+  })
 };
 
 function findUser(data, user) {

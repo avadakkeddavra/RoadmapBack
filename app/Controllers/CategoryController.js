@@ -7,6 +7,7 @@ const Skill = GlobalModel.skills;
 const UserSkill = GlobalModel.userSkills;
 const SkillCategory = GlobalModel.skillsCategories;
 const SkillLogs = GlobalModel.user_skills_logs;
+const Op = GlobalModel.Sequelize.Op;
 
 /*
 	VALIDATORS
@@ -74,6 +75,19 @@ const CategoryController = {
         let categories = await SkillCategory.findAll();
         Response.send({success: true, data: categories})
     },
+    search: function(Request, Response) {
+        SkillCategory.findAll({
+            where: {
+                title: {
+                    [Op.like]: '%'+Request.body.title+'%'
+                }
+            }
+        }).then(categories => {
+            Response.send(categories);
+        }).catch(Error => {
+            Response.send({error: Error.message})
+        })
+    }
 };
 
 module.exports = CategoryController;

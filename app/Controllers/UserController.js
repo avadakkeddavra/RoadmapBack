@@ -7,6 +7,7 @@ const Skill = GlobalModel.skills;
 const UserSkill = GlobalModel.userSkills;
 const SkillCategory = GlobalModel.skillsCategories;
 const SkillLogs = GlobalModel.user_skills_logs;
+const UserSettings = GlobalModel.user_settings;
 const sequelize = GlobalModel.sequelize;
 /*
 	VALIDATORS
@@ -41,7 +42,8 @@ const UserController = {
 						name:user.name,
 						id:user.id,
 						email:user.email,
-						role:user.role
+						role:user.role,
+						avatar: user.avatar
 					},process.env.JWT_KEY);
 
 						Response.send({success: true, token: token});
@@ -170,6 +172,7 @@ const UserController = {
             Response.send({success:false, error: Error});
         }
 	},
+
 	getUserSkills: async function(Request, Response) {
 
 		try {
@@ -181,19 +184,25 @@ const UserController = {
 				offset = (page-1)*10;
 			}
 
+			let whereUser = {};
 			let where = {};
-
 			if(Request.params.id) {
-				where = {
+				whereUser = {
                     userId:Request.params.id
 				}
 			}
 
+			if(Request.query.id !== 'null') {
+				where.categoryId = Request.query.id;
+			}
+
+
             Skill.findAll({
+				where: where,
                 include: [
                     {
                         model:UserSkill,
-                        where:where,
+                        where:whereUser,
 						include: [User]
                     },
                     {
@@ -202,18 +211,23 @@ const UserController = {
                 ],
 				limit:10,
 				offset:offset,
-				group:['userSkill.id'],
                 order:[
                     [UserSkill,'mark', "DESC"]
                 ]
 
             }).then(async skills => {
 
-            	let total = await UserSkill.count({
-					where:{
-						userId: Request.params.id
-					}
-				})
+                let total = 0;
+            	if(Request.query.id === 'null') {
+                     total = await UserSkill.count({
+                        where:{
+                            userId: Request.params.id
+                        }
+                    });
+				} else {
+            		 total = skills.length;
+				}
+
                 Response.send({skills:skills, total: total});
             })
 		} catch (Error) {
@@ -331,8 +345,67 @@ const UserController = {
             Response.send({success:true,data: user})
 		})
 	},
+
 	setSettings: async function(Request, Response) {
-		Response.send(Request.body);
+
+		UserSettings.findOne({
+			where: {
+				userId: Request.params.id
+			}
+		}).then(settings => {
+			if(settings) {
+				settings.update({
+                    dev_years:Request.body.dev_years,
+                    projects_completed: Request.body.projects
+				}).then(settings => {
+					Response.send(settings);
+				})
+			} else {
+                UserSettings.create({
+                    userId: Request.params.id,
+                    dev_years:Request.body.dev_years,
+                    projects_completed: Request.body.projects
+                }).then(settings => {
+                	Response.send(settings);
+				})
+			}
+		}).catch(Error => {
+			Response.send({error: Error.message})
+		})
+
+
+	},
+
+	uploadAvatar: function(Request, Response) {
+
+		User.findById(Request.body.userId).then(user => {
+			user.avatar = Request.file.filename;
+			user.save();
+
+            var token = jwt.sign({
+                name:user.name,
+                id:user.id,
+                email:user.email,
+                role:user.role,
+                avatar: user.avatar
+            },process.env.JWT_KEY);
+
+			Response.send({success:true, token: token, file: user.avatar});
+		}).catch( Error => {
+			Response.send({error: Error.message})
+		})
+	},
+
+	getUserSettings: function(Request, Response) {
+		UserSettings.findOne({
+			where: {
+				userId: Request.params.id
+			}
+		}).then(settings => {
+			Response.send(settings)
+		}).catch( Error => {
+			Response.send({error: Error.message})
+		})
 	}
 };
 

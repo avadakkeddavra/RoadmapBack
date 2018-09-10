@@ -9,6 +9,8 @@ const router = express.Router();
 const SkillsController = require('../app/Controllers/skills');
 const UserController = require('./../app/Controllers/UserController');
 const CategoryController = require('./../app/Controllers/CategoryController');
+const multer = require('multer');
+const upload = multer({dest:'./assets/images'});
 /*
 *
 *   MIDDLEWARES
@@ -37,6 +39,7 @@ router.put('/category/:id', authMiddleware.auth, authMiddleware.admin, CategoryC
 router.delete('/category/:id', authMiddleware.auth, authMiddleware.admin, CategoryController.delete);
 router.get('/category/:id', authMiddleware.auth, CategoryController.getSingle);
 router.get('/category', authMiddleware.auth, CategoryController.getAll);
+router.post('/category/search',  CategoryController.search);
 
 /*
 *
@@ -53,6 +56,8 @@ router.get('/skills/check_admin', authMiddleware.auth, UserController.isAdmin);
 router.get('/skills/matched',authMiddleware.auth.bind(authMiddleware), SkillsController.matched);
 router.post('/skills/logs', authMiddleware.auth.bind(authMiddleware), SkillsController.getLogs);
 router.post('/skills/compare', authMiddleware.auth, SkillsController.compare);
+router.post('/skills/sort', SkillsController.sort);
+router.post('/skills/search', SkillsController.search);
 router.get('/skills/:id', authMiddleware.auth.bind(authMiddleware),authMiddleware.admin, SkillsController.getSkills);
 
 
@@ -70,7 +75,8 @@ router.get('/user/:user_id/skills/:id', authMiddleware.auth.bind(authMiddleware)
 router.get('/user/:id/logs', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillsLogs);
 router.get('/user/:user_id/logs/skills/:id', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillLogById);
 router.get('/user/:id/stat', authMiddleware.auth, UserController.getCurrentUserInfo);
-router.post('/user/settings', authMiddleware.auth, UserController.setSettings)
-
+router.post('/user/settings/:id', authMiddleware.auth, UserController.setSettings);
+router.get('/user/settings/:id', authMiddleware.auth, UserController.getUserSettings);
+router.post('/user/avatar', upload.single('avatar'), UserController.uploadAvatar);
 
 module.exports = router;
