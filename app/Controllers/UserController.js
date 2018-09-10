@@ -84,7 +84,7 @@ const UserController = {
                         id:user.id,
                         email:user.email
                     },process.env.JWT_KEY);
-
+ 
                     Skill.findAll().then( async skills => {
                         let userSkills = [];
 
