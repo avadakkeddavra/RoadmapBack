@@ -65,43 +65,56 @@ const UserController = {
 		})
 	},
 
-	register: function (Request,Response)
-	{
-		Joi.validate(Request.body,UserSchemas.register,function(Error,Data){
-			if(!Error)
-			{
+    register: function (Request,Response)
+    {
+        Joi.validate(Request.body,UserSchemas.register,function(Error,Data){
+            if(!Error)
+            {
 
-				var hash = bcrypt.hashSync(Data.password, process.env.SALT);
+                var hash = bcrypt.hashSync(Data.password, process.env.SALT);
 
-				User.create({
-					name: Data.name,
-					email: Data.email,
-					password: hash
-				}).then(user => {
+                User.create({
+                    name: Data.name,
+                    email: Data.email,
+                    password: hash
+                }).then(user => {
 
-					var token = jwt.sign({
-						name:user.name,
-						id:user.id,
-						email:user.email
-					},process.env.JWT_KEY);
+                    var token = jwt.sign({
+                        name:user.name,
+                        id:user.id,
+                        email:user.email
+                    },process.env.JWT_KEY);
+
+                    Skill.findAll().then( async skills => {
+                        let userSkills = [];
+
+                        for(let skill of skills)
+                        {
+                            userSkills.push({
+                                userId: user.id,
+                                mark: 1,
+                                skillId: skill.id
+                            });
+                        }
+
+                        await UserSkill.bulkCreate(userSkills);
+
+                        Response.send({success:true,token: token});
+                    });
+                })
+                    .catch(E => {
+                        Response.status(400);
+                        Response.send({success:false,error:E});
+                    });
 
 
-					Response.send({success:true,token: token});
 
-				})
-				.catch(E => {
-					Response.status(400);
-					Response.send({success:false,error:E});
-				});
-
-				
-
-			}else{
-				Response.status(400);
-				Response.send(Error);
-			}
-		});
-	},
+            }else{
+                Response.status(400);
+                Response.send(Error);
+            }
+        });
+    },
 	isAdmin: async function (Request,Response){
         if(Request.auth.role === 1)
 		{
