@@ -84,7 +84,7 @@ const UserController = {
                         id:user.id,
                         email:user.email
                     },process.env.JWT_KEY);
- 
+
                     Skill.findAll().then( async skills => {
                         let userSkills = [];
 
@@ -111,7 +111,7 @@ const UserController = {
 
             }else{
                 Response.status(400);
-                Response.send(Error);
+                Response.send({success: false, error: Error});
             }
         });
     },
@@ -238,7 +238,9 @@ const UserController = {
                         }
                     });
 				} else {
-            		 total = skills.length;
+            		 total = await Skill.count({
+                         where:where
+                     });
 				}
 
                 Response.send({skills:skills, total: total});
