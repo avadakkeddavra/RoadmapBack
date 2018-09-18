@@ -9,6 +9,7 @@ const router = express.Router();
 const SkillsController = require('../app/Controllers/skills');
 const UserController = require('./../app/Controllers/UserController');
 const CategoryController = require('./../app/Controllers/CategoryController');
+const GlobalController = require('./../app/Controllers/GlobalController');
 const multer = require('multer');
 const upload = multer({dest:'./assets/images'});
 /*
@@ -27,6 +28,13 @@ const authMiddleware = require('../app/Middleware/auth');
 router.post('/register', UserController.register);
 router.post('/login', UserController.login);
 
+/**
+ *
+ *  GLOBAL ROUTES
+ *
+ * */
+
+router.get('/stat',GlobalController.getStats);
 
 /*
 *
