@@ -346,6 +346,8 @@ const UserController = {
 					model:UserSkill,
 					order:[['mark',"DESC"]],
 					include: [Skill]
+				}, {
+					model: UserSettings
 				}
 			]
 		}).then( user => {

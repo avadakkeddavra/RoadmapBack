@@ -444,6 +444,9 @@ skills.compare = async function(Request, Response) {
                 Skills,
                 {
                     model:User,
+                    where: {
+                        role: 0,
+                    },
                     include:{
                         model:UserSkills,
                         where:where,
@@ -460,9 +463,11 @@ skills.compare = async function(Request, Response) {
             for(let skill of skills) {
 
                 if( (userSkills.skill && skill.skill) &&
-                    userSkills.skill.title === skill.skill.title &&
-                    userSkills.mark < skill.mark
+                    userSkills.skill.id === skill.skill.id &&
+                    Number(userSkills.mark) < Number(skill.mark)
                 ) {
+
+                    console.log(skill.skill.id);
                     let user = findUser(compares, skill.user);
 
                     if(user === true) {
@@ -481,10 +486,11 @@ skills.compare = async function(Request, Response) {
                         });
                     }
 
-                    break;
                 }else{
                     continue;
                 }
+
+
             }
         }
 
@@ -521,6 +527,8 @@ function findUser(data, user) {
         let item = data[key];
         if(item.name === user.name) {
             return key;
+        } else {
+            continue;
         }
     }
 

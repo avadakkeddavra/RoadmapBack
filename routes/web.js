@@ -40,7 +40,7 @@ router.delete('/category/:id', authMiddleware.auth, authMiddleware.admin, Catego
 router.get('/category/:id', authMiddleware.auth, CategoryController.getSingle);
 router.get('/category', authMiddleware.auth, CategoryController.getAll);
 router.post('/category/search',  CategoryController.search);
-
+router.get('/category/user/:id/stat', CategoryController.getUserCategoryStat);
 /*
 *
 *   SKILLS FUNCTIONS ROUTES

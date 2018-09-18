@@ -8,7 +8,7 @@ const UserSkill = GlobalModel.userSkills;
 const SkillCategory = GlobalModel.skillsCategories;
 const SkillLogs = GlobalModel.user_skills_logs;
 const Op = GlobalModel.Sequelize.Op;
-
+const sequelize = GlobalModel.sequelize;
 /*
 	VALIDATORS
 */
@@ -72,8 +72,58 @@ const CategoryController = {
         Response.send({success: true, data: category})
     },
     getAll: async function(Request, Response) {
-        let categories = await SkillCategory.findAll();
+        let categories = await SkillCategory.findAll({include:[{model:Skill}]});
         Response.send({success: true, data: categories})
+    },
+    getUserCategoryStat: function(Request, Response) {
+        SkillCategory.findAll({
+            include: [
+                {
+                    model:Skill,
+                    attributes: [[sequelize.fn('COUNT', sequelize.col('skills.id')), 'count']],
+                    include:[
+                        {
+                           model: UserSkill,
+                           where: {
+                               userId: Request.params.id
+                           },
+                           attributes: [[sequelize.fn('SUM', sequelize.col('mark')), 'marks']]
+                        }
+                    ]
+                }
+            ],
+            group:['skillsCategories.id']
+        }).then(skills => {
+
+            for(let skill of skills) {
+                let mark = Number(skill.dataValues['skills'][0]['dataValues']['userSkill']['dataValues']['marks']);
+                let middleValue = Number(skill.dataValues['skills'][0]['dataValues']['count']) * 3;
+                let highValue = Number(skill.dataValues['skills'][0]['dataValues']['count'])* 6;
+                skill.dataValues['values'] = {
+                  middle: middleValue,
+                  high: highValue
+                };
+                console.log(mark);
+                if(mark < middleValue) {
+                    skill.dataValues['level'] = {
+                      value: 'junior',
+                      color: 'grey'
+                    };
+                } else if(mark >= middleValue && mark < highValue) {
+                    skill.dataValues['level'] = {
+                        value: 'middle',
+                        color: 'orange'
+                    };
+                } else {
+                    skill.dataValues['level'] = {
+                        value: 'senior',
+                        color: 'teal'
+                    };
+                }
+            }
+
+            Response.send({success: true, data: skills});
+        });
     },
     search: function(Request, Response) {
         SkillCategory.findAll({
