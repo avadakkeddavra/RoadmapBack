@@ -17,6 +17,10 @@ module.exports = function (sequelize,Sequelize) {
             type: Sequelize.INTEGER,
             allowNull: true
         },
+        bg_image: {
+            type: Sequelize.STRING,
+            allowNull: true
+        },
         createdAt: {
             type: Sequelize.DATE,
             defaultValue: sequelize.literal('CURRENT_TIMESTAMP')

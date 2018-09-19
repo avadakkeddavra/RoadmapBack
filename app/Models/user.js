@@ -26,6 +26,10 @@ module.exports = function (sequelize,Sequelize) {
             type: Sequelize.STRING,
             defaultValue: null
         },
+        occupation: {
+            type: Sequelize.TINYINT,
+            defaultValue: null
+        },
         created_at: {
             type: Sequelize.DATE,
             defaultValue: sequelize.literal('CURRENT_TIMESTAMP')
@@ -33,6 +37,10 @@ module.exports = function (sequelize,Sequelize) {
         updated_at: {
             type: Sequelize.DATE,
             defaultValue: sequelize.literal('CURRENT_TIMESTAMP')
+        },
+        invitation_date: {
+            type: Sequelize.DATE,
+            defaultValue: null
         }
     }, {
         timestamps: false

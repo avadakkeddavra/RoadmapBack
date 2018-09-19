@@ -85,6 +85,9 @@ router.get('/user/:user_id/logs/skills/:id', authMiddleware.auth.bind(authMiddle
 router.get('/user/:id/stat', authMiddleware.auth, UserController.getCurrentUserInfo);
 router.post('/user/settings/:id', authMiddleware.auth, UserController.setSettings);
 router.get('/user/settings/:id', authMiddleware.auth, UserController.getUserSettings);
+router.put('/user/edit/:id', authMiddleware.auth, UserController.updateUser);
 router.post('/user/avatar', upload.single('avatar'), UserController.uploadAvatar);
+router.post('/user/bg', upload.single('bg'), UserController.uploadBg);
+
 
 module.exports = router;

@@ -43,7 +43,9 @@ const UserController = {
 						id:user.id,
 						email:user.email,
 						role:user.role,
-						avatar: user.avatar
+						avatar: user.avatar,
+						occupation: user.occupation,
+						invitation_date: user.invitation_date
 					},process.env.JWT_KEY);
 
 						Response.send({success: true, token: token});
@@ -82,7 +84,10 @@ const UserController = {
                     var token = jwt.sign({
                         name:user.name,
                         id:user.id,
-                        email:user.email
+                        email:user.email,
+                        avatar: user.avatar,
+						occupation: user.occupation,
+						invitation_date: user.invitation_date
                     },process.env.JWT_KEY);
 
                     Skill.findAll().then( async skills => {
@@ -115,6 +120,32 @@ const UserController = {
             }
         });
     },
+	updateUser: function(Request, Response) {
+
+		Joi.validate(Request.body, UserSchemas.update, async function(Error, Data) {
+			if(!Error) {
+
+                let auth = Request.auth;
+
+                if(auth.id === Number(Request.params.id)) {
+                    let user = await User.findById(Request.params.id);
+
+                    user.update(Request.body).then(user => {
+                        Response.send(user);
+                    })
+
+                } else {
+                    Response.status(400);
+                    Response.send({success: false, message: 'Permission denied'})
+                }
+
+			} else {
+				Response.send(400, {success: false, error: Error})
+			}
+		});
+
+
+	},
 	isAdmin: async function (Request,Response){
         if(Request.auth.role === 1)
 		{
@@ -413,6 +444,20 @@ const UserController = {
 		})
 	},
 
+    uploadBg: function(Request, Response) {
+
+        User.findById(Request.body.userId,{
+        	include: [UserSettings]
+		}).then(user => {
+             user.user_setting.bg_image = Request.file.filename;
+             user.user_setting.save();
+
+
+            Response.send({bg: Request.file.filename});
+        }).catch( Error => {
+            Response.send({error: Error.message})
+        })
+    },
 	getUserSettings: function(Request, Response) {
 		UserSettings.findOne({
 			where: {
