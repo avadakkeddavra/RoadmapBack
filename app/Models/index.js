@@ -22,6 +22,46 @@ fs
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
+/**
+ *
+ *  ROADMAP RELATIONS
+ *
+ * */
+db.roadmaps.belongsToMany(db.users, {through:'user_roadmaps', foreignKey: 'roadmap_id'});
+db.roadmaps.belongsTo(db.users, {as:'Creator',foreignKey: 'creator_id'});
+db.roadmaps.hasMany(db.roadmap_checkpoints, { foreignKey: 'roadmap_id' });
+
+
+/**
+ *
+ *  ROADMAP CHECKPOINTS
+ *
+ * */
+db.roadmap_checkpoints.belongsToMany(db.users, {through: 'user_checkpoints', foreignKey: 'checkpoint_id'});
+db.roadmap_checkpoints.belongsTo(db.roadmaps, { foreignKey: 'roadmap_id' });
+db.roadmap_checkpoints.hasMany(db.todos, {foreignKey: 'checkpoint_id'});
+
+/**
+ *
+ *  TODOS
+ *
+ * */
+
+db.todos.belongsToMany(db.users, {through: 'user_todos', foreignKey: 'todo_id'})
+db.todos.hasMany(db.user_todos, {as:'todos_usertodos',foreignKey: 'todo_id'})
+
+
+
+/**
+ *
+ * USERS
+ *
+ * */
+
+db.users.belongsToMany(db.roadmaps, {through:'user_roadmaps', foreignKey: 'user_id'});
+db.users.belongsToMany(db.roadmap_checkpoints, {through: 'user_checkpoints', foreignKey: 'user_id'});
+db.users.belongsToMany(db.todos, {through: 'user_todos', foreignKey: 'user_id'});
+//SKILLS
 db.users.hasMany(db.userSkills, {foreignKey:'userId'});
 db.users.hasMany(db.user_skills_logs, {foreignKey: 'userId'});
 db.users.hasOne(db.user_settings, {foreignKey: 'userId'});

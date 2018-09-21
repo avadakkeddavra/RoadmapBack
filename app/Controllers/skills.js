@@ -15,7 +15,6 @@ const Emitter = require('./../Events/OnSkillUpdate');
 // Initialize skills class;
 const skills = {};
 // Initialize firebase;
-const firebase = require('firebase-admin');
 const User = globalModel.users;
 const Joi = require('joi');
 const SkillsSchema = require('./../Validators/SkillsSchema');
@@ -334,7 +333,7 @@ skills.getLogs = async function(Request, Response) {
             }
 
             let UserSkillsWhere = {};
-            if(Data.skillId) {
+            if(Data.skillId && Data.skillId.length > 0) {
                 UserSkillsWhere.skillId = Data.skillId;
             }
 
@@ -374,9 +373,16 @@ skills.getLogs = async function(Request, Response) {
                 ]
             }).then( async (skills) => {
 
-                let total = await skillLogs.count({
-                    where: Data
-                });
+                let total = 0;
+
+                if(UserSkillsWhere.skillId && Data.userId && UserSkillsWhere.skillId.length == 1) {
+                    total = skills.length;
+                } else {
+                    total = await skillLogs.count({
+                        where: Data
+                    });
+                }
+
                 Response.send({skills:skills, total: total})
             })
 

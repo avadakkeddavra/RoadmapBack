@@ -8,6 +8,11 @@ const UserSkill = GlobalModel.userSkills;
 const SkillCategory = GlobalModel.skillsCategories;
 const SkillLogs = GlobalModel.user_skills_logs;
 const UserSettings = GlobalModel.user_settings;
+const Roadmap = GlobalModel.roadmaps;
+const Checkpoint = GlobalModel.roadmap_checkpoints;
+const UserCheckpoints = GlobalModel.user_checkpoints;
+const Todo = GlobalModel.todos;
+const UserTodos = GlobalModel.user_todos;
 const sequelize = GlobalModel.sequelize;
 /*
 	VALIDATORS
@@ -176,6 +181,9 @@ const UserController = {
 				{
 					model: UserSkill,
                     attributes: [[sequelize.fn('SUM', sequelize.col('mark')), 'marks']]
+				},
+				{
+					model: UserSettings
 				}
 			],
 			group:['users.id']
@@ -468,7 +476,60 @@ const UserController = {
 		}).catch( Error => {
 			Response.send({error: Error.message})
 		})
-	}
+	},
+    getUserRoadmaps: async function(Request, Response) {
+        User.findById(Request.params.id, {
+            include: [
+                {
+                    model: Roadmap
+                }
+            ]
+        }).then(user => {
+            Response.send(user.roadmaps);
+        })
+    },
+    getUserRoadmapCheckpoints: async function(Request, Response) {
+	    User.findById(Request.params.id, {
+	        include: [
+                {
+                    model:Checkpoint,
+                    where: {
+                        roadmap_id: Request.params.roadmap_id
+                    },
+                    include: [{
+                        model:Todo,
+                        include:[{
+                            model:UserTodos,
+                            as:'todos_usertodos',
+                            where: {
+                                user_id: Request.params.id
+                            }
+                        },User]
+                    }]
+                }
+            ]
+        }).then(user => {
+            Response.send(user.roadmap_checkpoints);
+        }).catch(Error => {
+            Response.send(400, Error);
+        })
+    },
+    getUserRoadmapCheckpointTodos: async function(Request, Response) {
+        User.findById(Request.params.id, {
+            include: [
+                {
+                    model:Todo,
+                    where: {
+                        checkpoint_id: Request.params.checkpoint_id
+                    },
+                }
+            ]
+        }).then(user => {
+            Response.send(user);
+        }).catch(Error => {
+            Response.send(400, Error.message);
+        })
+    }
 };
 
 

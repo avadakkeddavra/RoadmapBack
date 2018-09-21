@@ -3,29 +3,9 @@ require('dotenv').config({path: './.env'})
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-const OnSkillUpdateEvent = require('./app/Events/OnSkillUpdate');
-const logSkills  = require('./app/Controllers/skills').getSkillsLogs;
-const ws = require('ws');
-
-let WebSocket = ws.Server;
-let  WebSocketServer = new WebSocket({port: 8800});
-
-WebSocketServer.on('connection', function connection(ws) {
-
-});
 
 require('./app/Models/connection');
 
-OnSkillUpdateEvent.on('update_skill', async function(){
-    var skills = await logSkills();
-    console.log(skills);
-
-    WebSocketServer.clients.forEach(client => {
-
-        client.send(skills);
-    });
-
-});
 
 app.use(function (req, res, next)
 {

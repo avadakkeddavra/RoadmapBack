@@ -10,6 +10,7 @@ const SkillsController = require('../app/Controllers/skills');
 const UserController = require('./../app/Controllers/UserController');
 const CategoryController = require('./../app/Controllers/CategoryController');
 const GlobalController = require('./../app/Controllers/GlobalController');
+const RoadmapController = require('./../app/Controllers/RoadmapController');
 const multer = require('multer');
 const upload = multer({dest:'./assets/images'});
 /*
@@ -89,5 +90,33 @@ router.put('/user/edit/:id', authMiddleware.auth, UserController.updateUser);
 router.post('/user/avatar', upload.single('avatar'), UserController.uploadAvatar);
 router.post('/user/bg', upload.single('bg'), UserController.uploadBg);
 
+router.get('/user/:id/roadmaps', UserController.getUserRoadmaps);
+router.get('/user/:id/roadmap/:roadmap_id/checkpoints', UserController.getUserRoadmapCheckpoints)
+router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', UserController.getUserRoadmapCheckpointTodos);
+/**
+ *
+ *  ROADMAPS ROUTES
+ *
+ *
+ * */
 
+router.get('/roadmap', RoadmapController.getAllRoadmaps);
+router.post('/roadmap',authMiddleware.auth, RoadmapController.create);
+router.post('/roadmap/:id/assign',authMiddleware.auth, RoadmapController.assignToRoadmap);
+router.delete('/roadmap/:id/unassign', authMiddleware.auth, RoadmapController.deleteAssignRoadmap);
+
+router.post('/roadmap/:id/checkpoint',authMiddleware.auth,  RoadmapController.createCheckpoint);
+router.post('/roadmap/:id/checkpoint/:checkpoint_id/swap',authMiddleware.auth,  RoadmapController.swapCheckpointPosition);
+router.delete('/roadmap/:roadmap_id/checkpoint/:id/unassign',authMiddleware.auth,  RoadmapController.deleteAssignCheckpoint);
+router.post('/roadmap/:id/checkpoint/:checkpoint_id/assign',authMiddleware.auth,  RoadmapController.assignToCheckpoint);
+
+
+/**
+ *  TODOS ROUTERS
+ *
+ * */
+router.post('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo', authMiddleware.auth, RoadmapController.createTodo);
+router.post('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id/assign', authMiddleware.auth, RoadmapController.assignTodo);
+router.delete('/todo/:id/unassign', authMiddleware.auth, RoadmapController.deleteAssignTodo);
+router.put('/todo/:id/check', authMiddleware.auth, RoadmapController.checkTodo);
 module.exports = router;
