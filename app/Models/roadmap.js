@@ -16,7 +16,10 @@ module.exports = function (sequelize,Sequelize) {
             type: Sequelize.INTEGER,
             allowNull: false
         },
-
+        category_id: {
+            type: Sequelize.INTEGER,
+            allowNull: false
+        },
         created_at: {
             type: Sequelize.DATE,
             defaultValue: sequelize.literal('CURRENT_TIMESTAMP')

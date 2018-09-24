@@ -4,11 +4,15 @@ const GlobalModel = require('./../Models/index');
 */
 const User = GlobalModel.users;
 const Roadmap = GlobalModel.roadmaps;
+const Skill = GlobalModel.skills;
 const UserRoadmap = GlobalModel.user_roadmaps;
 const Checkpoint = GlobalModel.roadmap_checkpoints;
 const UserCheckpoints = GlobalModel.user_checkpoints;
+const SkillCategory = GlobalModel.skillsCategories;
+
 const Todo = GlobalModel.todos;
 const UserTodos = GlobalModel.user_todos;
+const Op = GlobalModel.Sequelize.Op;
 const sequelize = GlobalModel.sequelize;
 /*
 	VALIDATORS
@@ -47,7 +51,7 @@ const RoadmapController = {
 
         const body = Request.body;
         body.roadmap_id = Request.params.id
-
+        body.creator_id = Request.auth.id;
         try{
             let roadmap = await Roadmap.findById(body.roadmap_id);
 
@@ -62,7 +66,7 @@ const RoadmapController = {
 
 
 
-        Joi.validate(Request.body, CheckpointSchema.create, function(Error, Data) {
+        Joi.validate(body, CheckpointSchema.create, function(Error, Data) {
             if( !Error ) {
 
                 Checkpoint.create(Data).then(checkpoint => {
@@ -89,8 +93,10 @@ const RoadmapController = {
                             roadmap_id: Request.params.id,
                             index_number: Number(Index) + 1,
                         });
+                        
+                        checkpoint.dataValues.user_checkpoints = user_checkpoint;
 
-                        Response.send(user_checkpoint);
+                        Response.send(checkpoint);
 
                     }).catch(Error => {
                         Response.send(400, Error);
@@ -159,16 +165,35 @@ const RoadmapController = {
 
         const body = {
             user_id: Request.auth.id,
-            checkpoint_id: Request.params.checkpoint_id
+            checkpoint_id: Request.params.checkpoint_id,
+            roadmap_id: Request.params.id
         };
 
         try{
+
+            let lastIndex = await UserCheckpoints.findOne({
+                where: {
+                    user_id: Request.auth.id,
+                    roadmap_id: Request.params.id
+                },
+                order:[['index_number', 'DESC']]
+            });
 
            let checkpoint = await Checkpoint.findById(body.checkpoint_id, {
                include: [
                    {
                        model: Roadmap
-                   }
+                   },
+                   {
+                        model:Todo,
+                        include:[{
+                            model:UserTodos,
+                            as:'todos_usertodos',
+                            where: {
+                                user_id: Request.auth.id
+                            }
+                        },User]
+                    }
                ]
            });
 
@@ -186,21 +211,28 @@ const RoadmapController = {
            if(!checkpoint || !userRoadmap || checkpoint.roadmap_id !== Number(Request.params.id)) {
                Response.send(400, {success: false, message: 'You can not assign this checkpoint'});return;
            }
+           
 
-        }catch( Error ) {
-            Response.send(Error.message);
-            return;
-        }
-
-        Joi.validate(body, CheckpointSchema.assign, function(Error, Data) {
+        Joi.validate(body, CheckpointSchema.assign, async function(Error, Data) {
             if(!Error) {
+
+
+                if(lastIndex.index_number > 0) 
+                {
+                    Data.index_number = Number(lastIndex.index_number) + 1;
+                } else {
+                    Data.index_number = 1;
+                }
+                
                 UserCheckpoints.findOrCreate({
                     where:Data
                 }).spread((user_checkpoint, created) => {
 
-
+ 
                     if(created) {
-                        Response.send({success: true,});
+
+                        checkpoint.dataValues.user_checkpoints = user_checkpoint;
+                        Response.send({success: true,checkpoint:checkpoint});
                     } else {
                         Response.send({success: false, message: 'You are already assigned to this checkpoint'});
                     }
@@ -212,6 +244,11 @@ const RoadmapController = {
                 Response.send(400, Error);
             }
         })
+
+        }catch( Error ) {
+            Response.send(Error.message);
+            return;
+        }
     },
 
     assignToRoadmap: function(Request, Response) {
@@ -293,6 +330,20 @@ const RoadmapController = {
        Response.send(roadmaps);
     },
 
+    getSignleRoadmap: async function(Request, Response) {
+        Roadmap.findById(Request.params.id, {
+            include: [{
+                model: User,
+                as:'Creator'
+            },{
+                model:SkillCategory
+            }]
+        }).then(roadmap => {
+            Response.send(roadmap);
+        }).catch(Error => {
+            Response.send(400, Error.message);
+        })
+    },
 
     createTodo: async function(Request, Response) {
         const body = {
@@ -302,7 +353,7 @@ const RoadmapController = {
         };
 
         try{
-
+ 
             let UserRoadmapExistence = await UserRoadmap.findOne({
                 where: {
                     user_id: Request.auth.id,
@@ -392,7 +443,7 @@ const RoadmapController = {
                     Response.send({success: false, error: Error});
                 })
             } else {
-
+                Response.send({success: false, error: Error});
             }
         })
 
@@ -444,6 +495,75 @@ const RoadmapController = {
         }).catch( Error => {
             Response.send(400, Error.message)
         })
+    },
+
+    discoverCheckpoints: async function(Request, Response) {
+
+        try {
+            let checkpoints = await Checkpoint.findAll({
+                where:{
+                    roadmap_id: Request.params.id,
+                    name: {
+                        [Op.like]: '%'+Request.query.name+'%'
+                    }
+                },
+                include: [
+                    Skill,
+                    {
+                        model: User
+                    },
+                    {
+                        model: User,
+                        as:'creator'
+                    }
+                ]
+            });
+            
+            for(let check of checkpoints) {
+                if(check.users.length > 0){
+                    for(let user of check.users) {
+                        if(user.id == Number(Request.auth.id)) {
+                            check.dataValues.assigned = true;
+                        } else{
+                            check.dataValues.assigned = false;
+                        }
+                    }
+                } else{
+                    check.dataValues.assigned = false;
+                }
+                
+            }
+
+            Response.send(checkpoints);
+        } catch(Error) {
+            Response.send(400, Error.message);
+        } 
+        
+    },
+
+    updatePositionOfCheckpoints: async function(Request, Response) {
+        
+        try {
+            let checkpoints = [];
+
+            for(let check of Request.body.checkpoints)
+            {
+                let checkpoint = await UserCheckpoints.update({
+                    index_number: check.index_number
+                },{
+                    where: {
+                        id: check.id
+                    }
+                });
+    
+                checkpoints.push(checkpoint);
+            }
+    
+            Response.send(checkpoints);
+        } catch(Error) {
+            Response.send(400, Error.message);
+        }
+
     }
 };
 

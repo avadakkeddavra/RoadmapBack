@@ -100,13 +100,18 @@ router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', User
  *
  * */
 
+ 
 router.get('/roadmap', RoadmapController.getAllRoadmaps);
+router.post('/roadmap/:id/checkpoint/position',authMiddleware.auth,  RoadmapController.updatePositionOfCheckpoints);
+router.get('/roadmap/:id', RoadmapController.getSignleRoadmap);
 router.post('/roadmap',authMiddleware.auth, RoadmapController.create);
 router.post('/roadmap/:id/assign',authMiddleware.auth, RoadmapController.assignToRoadmap);
 router.delete('/roadmap/:id/unassign', authMiddleware.auth, RoadmapController.deleteAssignRoadmap);
 
+router.get('/roadmap/:id/checkpoint/discover',authMiddleware.auth,  RoadmapController.discoverCheckpoints);
 router.post('/roadmap/:id/checkpoint',authMiddleware.auth,  RoadmapController.createCheckpoint);
 router.post('/roadmap/:id/checkpoint/:checkpoint_id/swap',authMiddleware.auth,  RoadmapController.swapCheckpointPosition);
+
 router.delete('/roadmap/:roadmap_id/checkpoint/:id/unassign',authMiddleware.auth,  RoadmapController.deleteAssignCheckpoint);
 router.post('/roadmap/:id/checkpoint/:checkpoint_id/assign',authMiddleware.auth,  RoadmapController.assignToCheckpoint);
 

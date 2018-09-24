@@ -8,6 +8,10 @@ module.exports = function (sequelize,Sequelize) {
         name: {
             type: Sequelize.STRING(256)
         },
+        creator_id: {
+            type: Sequelize.INTEGER,
+            allowNull: false
+        },
         skill_id: {
             type: Sequelize.INTEGER,
             allowNull: false
