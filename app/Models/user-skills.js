@@ -11,11 +11,13 @@ module.exports = function (sequelize,Sequelize) {
         },
         mark: {
             type: Sequelize.SMALLINT.UNSIGNED,
-            allowNull: false
+            allowNull: false,
+            defaultValue: 1
         },
         disposition: {
             type: Sequelize.SMALLINT.UNSIGNED,
-            allowNull: false
+            allowNull: false,
+            defaultValue: 1
         },
         comment: {
             type: Sequelize.STRING(256)
