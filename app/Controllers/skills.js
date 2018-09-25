@@ -20,6 +20,19 @@ const Joi = require('joi');
 const SkillsSchema = require('./../Validators/SkillsSchema');
 
 
+skills.update = async function(Request, Response) {
+  Skills.update(Request.body, {
+    where:{
+      id: Request.params.id
+    }
+  }).then(skill => {
+    Response.send({success: skill[0]})
+  }).catch(Error => {
+    Response.send(400, Error.message);
+  })
+}
+
+
 // Method for get skills data;
 skills.getSkills = async function (request, response)
 {
@@ -67,57 +80,50 @@ skills.addSkills = async function (request, response)
         if(!Error)
         {
 
-                if(!Data.disposition && !Data.mark) {
-                    response.status(400);
-                    response.send({
-                        success:false,
-                        message:'No field to update'
-                    });
-                    return;
-                }
-                // Try create or update skill;
-                let userSkills = await UserSkills.findOne({
-                    where: {
-                        userId: request['body']['userId'],
-                        skillId: request['body']['skillId']
-                    },
-                    include:[
-                        {model:Skills,include:[SkillsCategories]},
-                        {model:User}
-                    ]
+            if(!Data.disposition && !Data.mark && !Data.comment) {
+                response.status(400);
+                response.send({
+                    success:false,
+                    message:'No field to update'
+                });
+                return;
+            }
+            // Try create or update skill;
+            let userSkills = await UserSkills.findOne({
+                where: {
+                    userId: request['body']['userId'],
+                    skillId: request['body']['skillId']
+                },
+                include:[
+                    {model:Skills,include:[SkillsCategories]},
+                    {model:User}
+                ]
+            });
+
+            if(userSkills)
+            {
+                skillLogs.create({
+                    userId:userSkills.userId,
+                    skillId:userSkills.id,
+                    skill_old: userSkills.mark,
+                    skill_new: Data.mark
                 });
 
-                if(userSkills)
-                {
-                    skillLogs.create({
-                        userId:userSkills.userId,
-                        skillId:userSkills.id,
-                        skill_old: userSkills.mark,
-                        skill_new: Data.mark
-                    });
+                let update = Data;
+                delete update.skillId;
+                delete update.userId;
 
-                    if(Data.disposition)
-                    {
-                        var update = {
-                            disposition: Data.disposition
-                        }
-                    }else{
-                        var update = {
-                            mark:Data.mark,
-                        }
-                    }
+                await userSkills.update(update);
+                Emitter.emit('update_skill');
+                response.send(userSkills);
 
-                    await userSkills.update(update);
-                    Emitter.emit('update_skill');
-                    response.send(userSkills);
-
-                }else{
-                    response.status(400);
-                    response.send({
-                        success:false,
-                        message:'Such skill for this user does not exist or updates a same value'
-                    });
-                }
+            }else{
+                response.status(400);
+                response.send({
+                    success:false,
+                    message:'Such skill for this user does not exist or updates a same value'
+                });
+            }
 
 
         }else{
@@ -173,7 +179,7 @@ skills.createNewSkill = async function (Request, Response)
             Response.send({success:true,data:skill});
         } else {
             Response.status(500);
-            Response.send({success:false,error:Error});
+            Response.send({success:false,error:Error.details});
         }
     });
 
@@ -181,8 +187,8 @@ skills.createNewSkill = async function (Request, Response)
 
 }
 
-skills.getCategoriesSkills = async function (request, response) 
-{   
+skills.getCategoriesSkills = async function (request, response)
+{
 
     try {
         let res = await SkillsCategories.findAll();
@@ -191,7 +197,7 @@ skills.getCategoriesSkills = async function (request, response)
         response.status(500);
         responseHelper.sendResponse(response);
     }
-    
+
 };
 
 skills.getSkillsLogs = async function()

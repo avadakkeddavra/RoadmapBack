@@ -5,7 +5,8 @@ const AddSchema = Joi.object({
     userId:Joi.number().min(2).required(),
     mark:Joi.number().min(1).max(10),
     disposition:Joi.number().min(1).max(10),
-    skillId: Joi.number().required()
+    skillId: Joi.number().required(),
+    comment: Joi.string(),
 });
 
 const CreateSchema = Joi.object({

@@ -12,14 +12,17 @@ const CategoryController = require('./../app/Controllers/CategoryController');
 const GlobalController = require('./../app/Controllers/GlobalController');
 const RoadmapController = require('./../app/Controllers/RoadmapController');
 const multer = require('multer');
-const upload = multer({dest:'./assets/images'});
+const upload = multer({
+    dest:'./assets/images'
+});
+
 /*
 *
 *   MIDDLEWARES
 *
 * */
 const authMiddleware = require('../app/Middleware/auth');
-
+const UploadMiddleware = require('./../app/Middleware/uploadFile');
 
 /*
 * AUTH ROUTES
@@ -56,6 +59,8 @@ router.get('/category/user/:id/stat', CategoryController.getUserCategoryStat);
 *
 * */
 router.put('/skills', authMiddleware.auth.bind(authMiddleware), SkillsController.addSkills); // update User skill fields
+router.put('/skills/:id', authMiddleware.auth.bind(authMiddleware), authMiddleware.admin, SkillsController.update)
+
 router.post('/skills', authMiddleware.auth, SkillsController.createNewSkill);
 router.delete('/skills/:id', authMiddleware.auth, authMiddleware.admin, SkillsController.delete);
 router.get('/skills/categories', authMiddleware.auth, SkillsController.getCategoriesSkills);
@@ -87,7 +92,7 @@ router.get('/user/:id/stat', authMiddleware.auth, UserController.getCurrentUserI
 router.post('/user/settings/:id', authMiddleware.auth, UserController.setSettings);
 router.get('/user/settings/:id', authMiddleware.auth, UserController.getUserSettings);
 router.put('/user/edit/:id', authMiddleware.auth, UserController.updateUser);
-router.post('/user/avatar', upload.single('avatar'), UserController.uploadAvatar);
+router.post('/user/avatar', UploadMiddleware.upload.bind(UploadMiddleware) ,UserController.uploadAvatar);
 router.post('/user/bg', upload.single('bg'), UserController.uploadBg);
 
 router.get('/user/:id/roadmaps', UserController.getUserRoadmaps);
@@ -100,7 +105,7 @@ router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', User
  *
  * */
 
- 
+
 router.get('/roadmap', RoadmapController.getAllRoadmaps);
 router.post('/roadmap/:id/checkpoint/position',authMiddleware.auth,  RoadmapController.updatePositionOfCheckpoints);
 router.get('/roadmap/:id', RoadmapController.getSignleRoadmap);

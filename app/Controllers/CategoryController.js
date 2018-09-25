@@ -28,12 +28,12 @@ const CategoryController = {
                     })
                     .catch( Error => {
                         Response.status(400);
-                        Response.send({success: false, error: Error});
+                        Response.send({success: false, error: Error.errors});
                     })
 
             } else {
                 Response.status(400);
-                Response.send({success: false, error: Error});
+                Response.send({success: false, error: Error.details});
             }
         });
     },
