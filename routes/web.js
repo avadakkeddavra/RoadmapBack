@@ -107,6 +107,8 @@ router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', User
 
 
 router.get('/roadmap', RoadmapController.getAllRoadmaps);
+router.get('/roadmap/search', RoadmapController.searchRoadmaps);
+
 router.post('/roadmap/:id/checkpoint/position',authMiddleware.auth,  RoadmapController.updatePositionOfCheckpoints);
 router.get('/roadmap/:id', RoadmapController.getSignleRoadmap);
 router.post('/roadmap',authMiddleware.auth, RoadmapController.create);

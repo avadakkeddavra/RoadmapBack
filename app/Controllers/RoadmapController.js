@@ -96,6 +96,21 @@ const RoadmapController = {
 
                         checkpoint.dataValues.user_checkpoints = user_checkpoint;
 
+                        let check = await Checkpoint.findById(checkpoint.id, {
+                          include: [
+                            {
+                              model:Todo,
+                              include:[{
+                                  model:UserTodos,
+                                  as:'todos_usertodos',
+                                  where: {
+                                      user_id: Request.params.id
+                                  }
+                              }]
+
+                            }
+                        ]
+                        })
                         Response.send(checkpoint);
 
                     }).catch(Error => {
@@ -340,6 +355,56 @@ const RoadmapController = {
         }).catch(Error => {
             Response.send(400, Error)
         })
+    },
+
+    searchRoadmaps: async function(Request, Response) {
+
+      let name = ' ';
+      if(Request.query.name) {
+        name = '%'+Request.query.name+'%';
+      }
+
+      let where = {
+        [Op.or]: [
+          {
+            name:{
+              [Op.like] : '%'+name+'%'
+            }
+          }, {
+            description:{
+              [Op.like] :'%'+name+'%'
+            }
+          }
+        ]
+
+      };
+
+      if(Request.query.category_id) {
+        where.category_id = Request.query.category_id;
+      }
+
+      try {
+        let roadmaps = await Roadmap.findAll({
+          where: where,
+          include:[
+              {
+                   model:User,
+                   as: 'Creator'
+              },
+              {
+                model: SkillCategory
+              },
+              {
+                model: Checkpoint,
+                include: [Skill]
+              }
+          ]
+        });
+        Response.send(roadmaps);
+     } catch(Error) {
+       Response.send(400, Error.message)
+     }
+
     },
 
     getAllRoadmaps: async function(Request, Response) {

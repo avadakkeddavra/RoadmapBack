@@ -38,7 +38,7 @@ const UserController = {
 						email:Data.email,
 						password:bcrypt.hashSync(Data.password, process.env.SALT)
 					}
-					
+
 				})
 				.then(user => {
 					if(user)
@@ -54,12 +54,12 @@ const UserController = {
 					},process.env.JWT_KEY);
 
 						Response.send({success: true, token: token});
-						
+
 					}else{
 						Response.status(400);
 						Response.send({success:false,error:'Invalid password or email'});
 					}
-					
+
 				})
 				.catch(E => {
 					Response.status(400);
@@ -511,7 +511,7 @@ const UserController = {
         }).then(user => {
             Response.send(user.roadmap_checkpoints);
         }).catch(Error => {
-            Response.send(400, Error);
+            Response.send(400, {error: Error.message});
         })
     },
     getUserRoadmapCheckpointTodos: async function(Request, Response) {
