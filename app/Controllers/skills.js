@@ -102,12 +102,15 @@ skills.addSkills = async function (request, response)
 
             if(userSkills)
             {
+              if(Data.mark) {
                 skillLogs.create({
                     userId:userSkills.userId,
                     skillId:userSkills.id,
                     skill_old: userSkills.mark,
                     skill_new: Data.mark
                 });
+              }
+
 
                 let update = Data;
                 delete update.skillId;

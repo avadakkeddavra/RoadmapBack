@@ -12,6 +12,10 @@ module.exports = function (sequelize,Sequelize) {
             type: Sequelize.INTEGER,
             allowNull: false
         },
+        creator_id: {
+          type: Sequelize.INTEGER,
+          allowNull: false
+        },
         description: {
             type:Sequelize.TEXT,
             allowNull: true

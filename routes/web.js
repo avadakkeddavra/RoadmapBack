@@ -95,9 +95,10 @@ router.put('/user/edit/:id', authMiddleware.auth, UserController.updateUser);
 router.post('/user/avatar', UploadMiddleware.upload.bind(UploadMiddleware) ,UserController.uploadAvatar);
 router.post('/user/bg', upload.single('bg'), UserController.uploadBg);
 
-router.get('/user/:id/roadmaps', UserController.getUserRoadmaps);
-router.get('/user/:id/roadmap/:roadmap_id/checkpoints', UserController.getUserRoadmapCheckpoints)
-router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', UserController.getUserRoadmapCheckpointTodos);
+router.get('/user/roadmaps/generate',authMiddleware.auth, UserController.generateRoadmapsFromAims.bind(UserController));
+router.get('/user/:id/roadmaps', authMiddleware.auth,UserController.getUserRoadmaps);
+router.get('/user/:id/roadmap/:roadmap_id/checkpoints', authMiddleware.auth,UserController.getUserRoadmapCheckpoints)
+router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', authMiddleware.auth,UserController.getUserRoadmapCheckpointTodos);
 /**
  *
  *  ROADMAPS ROUTES
@@ -106,11 +107,11 @@ router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', User
  * */
 
 
-router.get('/roadmap', RoadmapController.getAllRoadmaps);
-router.get('/roadmap/search', RoadmapController.searchRoadmaps);
+router.get('/roadmap',authMiddleware.auth, RoadmapController.getAllRoadmaps);
+router.get('/roadmap/search',authMiddleware.auth, RoadmapController.searchRoadmaps);
 
 router.post('/roadmap/:id/checkpoint/position',authMiddleware.auth,  RoadmapController.updatePositionOfCheckpoints);
-router.get('/roadmap/:id', RoadmapController.getSignleRoadmap);
+router.get('/roadmap/:id',authMiddleware.auth, RoadmapController.getSignleRoadmap);
 router.post('/roadmap',authMiddleware.auth, RoadmapController.create);
 router.post('/roadmap/:id/assign',authMiddleware.auth, RoadmapController.assignToRoadmap);
 router.delete('/roadmap/:id/unassign', authMiddleware.auth, RoadmapController.deleteAssignRoadmap);

@@ -52,19 +52,6 @@ const RoadmapController = {
         const body = Request.body;
         body.roadmap_id = Request.params.id
         body.creator_id = Request.auth.id;
-        try{
-            let roadmap = await Roadmap.findById(body.roadmap_id);
-
-            if(roadmap.creator_id !== Request.auth.id) {
-                Response.send({success: false, message: 'You are not creator of this roadmap'})
-            }
-
-
-        } catch(Error) {
-            Response.send(400, Error);
-        }
-
-
 
         Joi.validate(body, CheckpointSchema.create, function(Error, Data) {
             if( !Error ) {
@@ -266,18 +253,23 @@ const RoadmapController = {
         }
     },
 
-    assignToRoadmap: function(Request, Response) {
+    assignToRoadmap: async function(Request, Response) {
 
         const body = {
             user_id: Request.auth.id,
             roadmap_id: Request.params.id
         };
 
+        let roadmap = await Roadmap.findById(body.roadmap_id);
+
         Joi.validate(body, RoadmapSchema.assign, function(Error, Data) {
             if(!Error) {
                 UserRoadmap.findOrCreate({
                     where:Data
                 }).spread(async (assign,created) => {
+
+
+
                     if(created) {
                         let roadmap = await Roadmap.findById(body.roadmap_id);
 
@@ -287,23 +279,42 @@ const RoadmapController = {
                             user_id: roadmap.creator_id
                           }
                         }).then(async checkpoints => {
-                          for(let i in checkpoints) {
-                            let checkpoint = checkpoints[i];
-                            await UserCheckpoints.findOrCreate({
+                            for(let i in checkpoints) {
+                              let checkpoint = checkpoints[i];
+                              await UserCheckpoints.findOrCreate({
+                                where: {
+                                  user_id: Request.auth.id,
+                                  checkpoint_id: checkpoint.checkpoint_id,
+                                  roadmap_id: roadmap.id,
+                                  index_number: checkpoint.index_number
+                                }
+                              });
+                            }
+
+                            UserTodos.findAll({
                               where: {
-                                user_id: Request.auth.id,
-                                checkpoint_id: checkpoint.checkpoint_id,
-                                roadmap_id: roadmap.id,
-                                index_number: checkpoint.index_number
+                                user_id: roadmap.creator_id
                               }
+                            }).then(async todos => {
+
+
+
+                                for(let todo of todos) {
+                                  await UserTodos.findOrCreate({
+                                    where: {
+                                      user_id: Request.auth.id,
+                                      todo_id: todo.todo_id
+                                    }
+                                  })
+                                }
+                                Response.send({success: true});return;
+                            }).catch(Error => {
+                              Response.send({title:"Todos creation error", message:Error.message})
                             });
-                          }
-                            Response.send({success: true});
+
                         }).catch(Error => {
-                          Response.send(Error.message)
+                          Response.send({title:"Checkpoints creation error", message:Error.message})
                         })
-
-
                     } else {
                         Response.send({success: false, message: 'You are already assigned to this roadmap'});
                     }
@@ -360,29 +371,41 @@ const RoadmapController = {
     searchRoadmaps: async function(Request, Response) {
 
       let name = ' ';
+      let where = {
+        [Op.or] : {
+          hidden: 0,
+          creator_id: Request.auth.id
+        }
+      };
+      let offset = 0;
       if(Request.query.name) {
         name = '%'+Request.query.name+'%';
+        where = {
+          [Op.or]: [
+            {
+              name:{
+                [Op.like] : '%'+name+'%'
+              }
+            }, {
+              description:{
+                [Op.like] :'%'+name+'%'
+              }
+            }
+          ]
+        };
       }
 
-      let where = {
-        [Op.or]: [
-          {
-            name:{
-              [Op.like] : '%'+name+'%'
-            }
-          }, {
-            description:{
-              [Op.like] :'%'+name+'%'
-            }
-          }
-        ]
 
-      };
 
       if(Request.query.category_id) {
         where.category_id = Request.query.category_id;
-      }
+      };
 
+      if(Request.query.offset)
+      {
+        offset = Number(Request.query.offset);
+      }
+      // Response.send(where);return
       try {
         let roadmaps = await Roadmap.findAll({
           where: where,
@@ -392,14 +415,28 @@ const RoadmapController = {
                    as: 'Creator'
               },
               {
+                model:User
+              },
+              {
                 model: SkillCategory
               },
               {
                 model: Checkpoint,
                 include: [Skill]
               }
-          ]
+          ],
+          limit:2,
+          offset: offset,
+          order:[['name','ASC']]
         });
+        for(let roadmap of roadmaps) {
+          for(let user of roadmap.users) {
+            if(Request.auth.id == user.dataValues.id) {
+              roadmap.dataValues.assigned = true;
+              break;
+            }
+          }
+        }
         Response.send(roadmaps);
      } catch(Error) {
        Response.send(400, Error.message)
@@ -415,14 +452,27 @@ const RoadmapController = {
                     as: 'Creator'
                },
                {
+                 model:User
+               },
+               {
                  model: SkillCategory
                },
                {
                  model: Checkpoint,
                  include: [Skill]
                }
-           ]
+           ],
+           limit: 2,
+           order:[['name','ASC']]
        });
+       for(let roadmap of roadmaps) {
+         for(let user of roadmap.users) {
+           if(Request.auth.id == user.dataValues.id) {
+             roadmap.dataValues.assigned = true;
+             break;
+           }
+         }
+       }
        Response.send(roadmaps);
     },
 
@@ -433,6 +483,11 @@ const RoadmapController = {
                 as:'Creator'
             },{
                 model:SkillCategory
+            }, {
+               model:User,
+               where: {
+                 id: Request.auth.id
+               }
             }]
         }).then(roadmap => {
             Response.send(roadmap);
@@ -445,7 +500,8 @@ const RoadmapController = {
         const body = {
             name: Request.body.name,
             description: Request.body.description,
-            checkpoint_id: Request.params.checkpoint_id
+            checkpoint_id: Request.params.checkpoint_id,
+            creator_id: Request.auth.id
         };
 
         try{

@@ -16,6 +16,10 @@ module.exports = function (sequelize,Sequelize) {
             type: Sequelize.INTEGER,
             allowNull: false
         },
+        hidden: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: 0
+        },
         category_id: {
             type: Sequelize.INTEGER,
             allowNull: false

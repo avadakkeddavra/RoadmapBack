@@ -80,14 +80,14 @@ const CategoryController = {
             include: [
                 {
                     model:Skill,
-                    attributes: [[sequelize.fn('COUNT', sequelize.col('skills.id')), 'count']],
+                    attributes: {include:[[sequelize.fn('COUNT', sequelize.col('skills.id')), 'count']]},
                     include:[
                         {
                            model: UserSkill,
                            where: {
                                userId: Request.params.id
                            },
-                           attributes: [[sequelize.fn('SUM', sequelize.col('mark')), 'marks']]
+                           attributes: ['userId',[sequelize.fn('SUM', sequelize.col('mark')), 'marks']]
                         }
                     ]
                 }
@@ -95,15 +95,20 @@ const CategoryController = {
             group:['skillsCategories.id']
         }).then(skills => {
 
-            for(let skill of skills) {
-                let mark = Number(skill.dataValues['skills'][0]['dataValues']['userSkill']['dataValues']['marks']);
-                let middleValue = Number(skill.dataValues['skills'][0]['dataValues']['count']) * 3;
-                let highValue = Number(skill.dataValues['skills'][0]['dataValues']['count'])* 6;
+            for(let i in skills) {
+              let skill = skills[i];
+                if(skill.skills.length == 0) {
+                  skills.splice(i,1);
+                  continue;
+                }
+                let mark = Number(skill.skills[0].userSkills[0].dataValues['marks']);
+                let middleValue = Number(skill.skills[0].dataValues.count) * 3;
+                let highValue = Number(skill.skills[0].dataValues.count)* 6;
                 skill.dataValues['values'] = {
                   middle: middleValue,
                   high: highValue
                 };
-                console.log(mark);
+                console.log(middleValue)
                 if(mark < middleValue) {
                     skill.dataValues['level'] = {
                       value: 'junior',
@@ -122,7 +127,9 @@ const CategoryController = {
                 }
             }
 
-            Response.send({success: true, data: skills});
+            Response.send(skills);
+        }).catch(Error => {
+          Response.send(400, {error: Error.message})
         });
     },
     search: function(Request, Response) {

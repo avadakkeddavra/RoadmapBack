@@ -9,10 +9,12 @@ const SkillCategory = GlobalModel.skillsCategories;
 const SkillLogs = GlobalModel.user_skills_logs;
 const UserSettings = GlobalModel.user_settings;
 const Roadmap = GlobalModel.roadmaps;
+const UserRoadmap = GlobalModel.user_roadmaps;
 const Checkpoint = GlobalModel.roadmap_checkpoints;
 const UserCheckpoints = GlobalModel.user_checkpoints;
 const Todo = GlobalModel.todos;
 const UserTodos = GlobalModel.user_todos;
+const Op = GlobalModel.Sequelize.Op;
 const sequelize = GlobalModel.sequelize;
 /*
 	VALIDATORS
@@ -249,41 +251,41 @@ const UserController = {
 			}
 
 
-            Skill.findAll({
+      Skill.findAll({
 				where: where,
-                include: [
-                    {
-                        model:UserSkill,
-                        where:whereUser,
-						include: [User]
-                    },
-                    {
-                        model: SkillCategory
-                    }
-                ],
+        include: [
+          {
+              model:UserSkill,
+              where:whereUser,
+							include: [User]
+          },
+          {
+              model: SkillCategory
+          }
+        ],
 				limit:10,
 				offset:offset,
-                order:[
-                    [UserSkill,'mark', "DESC"]
-                ]
+        order:[
+            [UserSkill,'mark', "DESC"]
+        ]
 
-            }).then(async skills => {
+      }).then(async skills => {
 
-                let total = 0;
-            	if(Request.query.id === 'null') {
-                     total = await UserSkill.count({
-                        where:{
-                            userId: Request.params.id
-                        }
-                    });
+        let total = 0;
+      	if(Request.query.id === 'null') {
+             total = await UserSkill.count({
+                where:{
+                    userId: Request.params.id
+                }
+            });
 				} else {
-            		 total = await Skill.count({
-                         where:where
-                     });
+      		 total = await Skill.count({
+              where:where
+          });
 				}
 
-                Response.send({skills:skills, total: total});
-            })
+        Response.send({skills:skills, total: total});
+    })
 		} catch (Error) {
 
 			Response.status(400);
@@ -477,59 +479,136 @@ const UserController = {
 			Response.send({error: Error.message})
 		})
 	},
-    getUserRoadmaps: async function(Request, Response) {
-        User.findById(Request.params.id, {
-            include: [
-                {
-                    model: Roadmap
-                }
-            ]
-        }).then(user => {
-            Response.send(user.roadmaps);
-        })
-    },
-    getUserRoadmapCheckpoints: async function(Request, Response) {
-	    User.findById(Request.params.id, {
-	        include: [
-                {
-                    model:Checkpoint,
-                    where: {
-                        roadmap_id: Request.params.roadmap_id
-                    },
-                    include: [{
-                        model:Todo,
-                        include:[{
-                            model:UserTodos,
-                            as:'todos_usertodos',
-                            where: {
-                                user_id: Request.params.id
-                            }
-                        },User]
-                    }]
-                }
-            ]
-        }).then(user => {
-            Response.send(user.roadmap_checkpoints);
-        }).catch(Error => {
-            Response.send(400, {error: Error.message});
-        })
-    },
-    getUserRoadmapCheckpointTodos: async function(Request, Response) {
-        User.findById(Request.params.id, {
-            include: [
-                {
-                    model:Todo,
-                    where: {
-                        checkpoint_id: Request.params.checkpoint_id
-                    },
-                }
-            ]
-        }).then(user => {
-            Response.send(user);
-        }).catch(Error => {
-            Response.send(400, Error.message);
-        })
-    }
+
+	generateRoadmapsFromAims:async function(Request, Response) {
+
+		if(Request.auth.roadmap_generated)
+		{
+			Response.send({success: false, message: 'You are alreary generate your roadmaps'});
+			return;
+		}
+
+		SkillCategory.findAll({
+			include: [{
+				model:Skill,
+				include: [{
+					model:UserSkill,
+					where:{
+						userId: Request.auth.id,
+						disposition: {
+							[Op.gte] : 6
+						}
+					}
+				}]
+			}]
+		}).then(async skills => {
+
+				let Data = [];
+				for(let skill of skills){
+					if(skill.skills.length > 0){
+						Data.push(skill.dataValues)
+					}
+				}
+
+				if(Data.length > 0){
+					Request.auth.roadmap_generated = 1;
+					Request.auth.save();
+				} else {
+					Response.send(400, {success: false, message: 'You don\'t have skill aims to build roadmaps. Please fill it'});
+					return;
+				}
+
+				for(let i in Data) {
+					let item = Data[i];
+					let roadmap = await Roadmap.create({
+						creator_id: Request.auth.id,
+						name:'Learning of ' + item.title,
+						category_id: item.id,
+						hidden: 1
+					});
+
+					await UserRoadmap.create({
+						user_id: Request.auth.id,
+						roadmap_id: roadmap.id
+					})
+
+					for(let skill of item.skills) {
+						let checkpoint = await Checkpoint.create({
+							name:'Learning of ' + skill.title,
+							creator_id: Request.auth.id,
+							skill_id: skill.id,
+							roadmap_id: roadmap.id
+						});
+
+					await UserCheckpoints.create({
+							checkpoint_id: checkpoint.id,
+							user_id: Request.auth.id,
+							roadmap_id: roadmap.id,
+							index_number: i+1
+						})
+					}
+				}
+				Request.params.id = Request.auth.id;
+				this.getUserRoadmaps(Request,Response);
+		}).catch(Error => {
+			Response.send(400, Error.message);
+		})
+	},
+  getUserRoadmaps: async function(Request, Response) {
+      User.findById(Request.params.id, {
+          include: [
+              {
+                  model: Roadmap
+              },
+          ]
+      }).then(user => {
+          Response.send(user.roadmaps);
+      }).catch(Error => {
+					Response.send(Error.message)
+			})
+  },
+  getUserRoadmapCheckpoints: async function(Request, Response) {
+    User.findById(Request.params.id, {
+        include: [
+              {
+                  model:Checkpoint,
+                  where: {
+                      roadmap_id: Request.params.roadmap_id
+                  },
+                  include: [{
+                      model:Todo,
+                      include:[{
+                          model:UserTodos,
+                          as:'todos_usertodos',
+                          where: {
+                              user_id: Request.params.id
+                          }
+                      },User]
+                  }]
+              }
+          ]
+      }).then(user => {
+          Response.send(user.roadmap_checkpoints);
+      }).catch(Error => {
+          Response.send(400, {error: Error.message});
+      })
+  },
+  getUserRoadmapCheckpointTodos: async function(Request, Response) {
+      User.findById(Request.params.id, {
+          include: [
+              {
+                  model:Todo,
+                  where: {
+                      checkpoint_id: Request.params.checkpoint_id
+                  },
+              }
+          ]
+      }).then(user => {
+          Response.send(user);
+      }).catch(Error => {
+          Response.send(400, Error.message);
+      })
+  }
 };
 
 

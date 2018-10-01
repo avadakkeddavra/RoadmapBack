@@ -10,13 +10,13 @@ module.exports = function (sequelize,Sequelize) {
         },
         email: {
             type: Sequelize.STRING(256),
-            unique: true 
+            unique: true
         },
         password: {
             type: Sequelize.STRING(256),
             get(){
-                
-            } 
+
+            }
         },
         role: {
             type: Sequelize.INTEGER,
@@ -29,6 +29,10 @@ module.exports = function (sequelize,Sequelize) {
         occupation: {
             type: Sequelize.TINYINT,
             defaultValue: null
+        },
+        roadmap_generated: {
+          type: Sequelize.BOOLEAN,
+          defaultValue: 0
         },
         created_at: {
             type: Sequelize.DATE,
