@@ -25,6 +25,7 @@ const Joi = require('joi');
 /*
 	JWT AND LIBS
 */
+const moment = require('moment');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -608,7 +609,107 @@ const UserController = {
       }).catch(Error => {
           Response.send(400, Error.message);
       })
-  }
+  },
+
+	getUserRoadmapStatistics:async function(Request, Response) {
+		Roadmap.findById(Request.params.id, {
+			include: [
+				{
+					model: Checkpoint,
+					where: {
+						creator_id: {
+							[Op.ne]: Request.auth.id
+						}
+					},
+					include: [
+						{
+							model:User,
+							as: 'creator'
+						}
+					]
+				},
+				{
+					model: User,
+					where: {
+						id: {
+							[Op.ne]: Request.auth.id
+						}
+					}
+				}
+			],
+		}).then(async Data => {
+			let stats = {
+				users: Data.users.length,
+				checkpoints: Data.roadmap_checkpoints.length
+			}
+			if(Data.creator_id != Request.auth.id) {
+				Response.send({error:'You are not a founder of this roadmap'});
+				return;
+			}
+			Data.roadmap_checkpoints = Data.roadmap_checkpoints.map(function(item){
+				item.dataValues.type = 'checkpoint';
+				item = item.dataValues;
+				item.group_field = moment(item.updated_at).format('Y-MM-DD');
+				item.updated_at = moment(item.updated_at).format("dddd, MMMM Do YYYY, h:mm:ss a");
+				return item;
+			});
+
+			Data.users = Data.users.map(function(item) {
+				item.dataValues.type = 'user';
+				item = item.dataValues;
+				item.user_roadmaps =  item.user_roadmaps.dataValues;
+				item.group_field = moment(item.user_roadmaps.updated_at).format('Y-MM-DD');
+				item.updated_at = moment(item.user_roadmaps.updated_at).format("dddd, MMMM Do YYYY, h:mm:ss a")
+
+				return item;
+			})
+
+			let todos = await sequelize.query('SELECT todos.*, creator.name as `creatorName`, RCH.name as `checkpoint` FROM `roadmaps` as `R` INNER JOIN `roadmap_checkpoints` as `RCH` ON `R`.`id` = `RCH`.`roadmap_id` INNER JOIN `todos` ON `RCH`.`id` = `todos`.`checkpoint_id` INNER JOIN `users` AS `creator` ON `todos`.`creator_id` = `creator`.`id` WHERE todos.creator_id <> ' + Request.auth.id + '',{ type: sequelize.QueryTypes.SELECT});
+
+			todos = todos.map(function(item) {
+				item.type = 'todo';
+				item.group_field = moment(item.updated_at).format('Y-MM-DD');
+				item.updated_at = moment(item.updated_at).format("dddd, MMMM Do YYYY, h:mm:ss a");
+				return item;
+			})
+
+			let data = todos.concat(Data.users).concat(Data.roadmap_checkpoints);
+
+			data.sort(function(a,b) {
+				if(a.updated_at < b.updated_at) {
+					return 1;
+				}
+				if(a.updated_at > b.updated_at) {
+					return -1;
+				}
+				return 0;
+			});
+
+			var groupBy = function(xs, key) {
+			  return xs.reduce(function(rv, x) {
+			    (rv[x[key]] = rv[x[key]] || []).push(x);
+			    return rv;
+			  }, {});
+			};
+
+			data = groupBy(data,'group_field');
+			Object.keys(data).sort(function(a,b) {
+				a = new Date(a);
+				b = new Date(b);
+				if(a < b) {
+					return 1;
+				}
+				if(a > b) {
+					return -1;
+				}
+				return 0;
+			});
+
+			Response.send({data:data, stats: stats});
+		}).catch(Error => {
+			Response.send({message: Error.message})
+		})
+	}
 };
 
 

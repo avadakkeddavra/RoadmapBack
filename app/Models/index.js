@@ -6,11 +6,10 @@ let Sequelize = require('./connection').Sequelize;
 
 let db = {};
 
-
 fs
     .readdirSync(__dirname)
     .filter(function(file) {
-        return (file.indexOf(".") !== 0) && (file !== "index.js" && file !== 'connection.js');
+        return (file.indexOf(".") !== 0) && (file !== "index.js" && file !== 'connection.js' && file !== 'relations');
     })
     .forEach(function(file) {
         let model = sequelize.import(path.join(__dirname, file));
@@ -27,21 +26,14 @@ db.Sequelize = Sequelize;
  *  ROADMAP RELATIONS
  *
  * */
-db.roadmaps.belongsToMany(db.users, {through:'user_roadmaps', foreignKey: 'roadmap_id'});
-db.roadmaps.belongsTo(db.users, {as:'Creator',foreignKey: 'creator_id'});
-db.roadmaps.hasMany(db.roadmap_checkpoints, { foreignKey: 'roadmap_id' });
-db.roadmaps.belongsTo(db.skillsCategories, {foreignKey: 'category_id'});
+ require('./relations/roadmap.js')(db);
 
 /**
  *
  *  ROADMAP CHECKPOINTS
  *
  * */
-db.roadmap_checkpoints.belongsToMany(db.users, {through: 'user_checkpoints', foreignKey: 'checkpoint_id'});
-db.roadmap_checkpoints.belongsTo(db.roadmaps, { foreignKey: 'roadmap_id' });
-db.roadmap_checkpoints.belongsTo(db.users, {as:'creator', foreignKey: 'creator_id' });
-db.roadmap_checkpoints.hasMany(db.todos, {foreignKey: 'checkpoint_id'});
-db.roadmap_checkpoints.belongsTo(db.skills, {foreignKey: 'skill_id'})
+require('./relations/checkpoints.js')(db);
 /**
  *
  *  TODOS
@@ -51,7 +43,6 @@ db.roadmap_checkpoints.belongsTo(db.skills, {foreignKey: 'skill_id'})
 db.todos.belongsToMany(db.users, {through: 'user_todos', foreignKey: 'todo_id'})
 db.todos.hasMany(db.user_todos, {as:'todos_usertodos',foreignKey: 'todo_id'})
 db.todos.belongsTo(db.users, {as:'creator', foreignKey:'creator_id'})
-
 
 /**
  *

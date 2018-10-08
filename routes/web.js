@@ -99,6 +99,7 @@ router.get('/user/roadmaps/generate',authMiddleware.auth, UserController.generat
 router.get('/user/:id/roadmaps', authMiddleware.auth,UserController.getUserRoadmaps);
 router.get('/user/:id/roadmap/:roadmap_id/checkpoints', authMiddleware.auth,UserController.getUserRoadmapCheckpoints)
 router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', authMiddleware.auth,UserController.getUserRoadmapCheckpointTodos);
+router.get('/user/roadmap-stats/:id',authMiddleware.auth, UserController.getUserRoadmapStatistics);
 /**
  *
  *  ROADMAPS ROUTES
