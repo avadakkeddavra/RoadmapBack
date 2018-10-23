@@ -14,7 +14,11 @@ module.exports = function (sequelize,Sequelize) {
         },
         skill_id: {
             type: Sequelize.INTEGER,
-            allowNull: false
+            allowNull: false,
+            references: {
+                model: "skills",
+                key: "id"
+            }
         },
         roadmap_id: {
             type: Sequelize.INTEGER,

@@ -437,12 +437,15 @@ const RoadmapController = {
                         model: Roadmap
                     },
                     {
-                            model:Todo,
-                            include:[{
-                                model:UserTodos,
-                                as:'todos_usertodos',
-                            },User]
-                        }
+                        model:Todo,
+                        include:[{
+                            model:UserTodos,
+                            as:'todos_usertodos',
+                        },User]
+                    },
+                    {
+                        model:Skill
+                    }
                 ]
             });
 
@@ -584,11 +587,17 @@ const RoadmapController = {
 
                             }
                         ]
-                        })
-                        Response.send(checkpoint);
+                        });
+
+                        checkpoint.getSkill().then(skill => {
+                            checkpoint.dataValues.skill = skill;
+                            Response.send(checkpoint);
+                        }).catch(Error => {
+                            Response.send(400, Error.message);
+                        });
 
                     }).catch(Error => {
-                        Response.send(400, Error);
+                        Response.send(400, Error.message);
                     }) ;
 
 
@@ -599,7 +608,7 @@ const RoadmapController = {
                 });
 
             } else {
-                Response.send(400, Error);
+                Response.send(400, Error.message);
             }
         })
     },
@@ -672,8 +681,9 @@ const RoadmapController = {
             for(let check of checkpoints) {
                 if(check.users.length > 0){
                     for(let user of check.users) {
-                        if(user.id == Number(Request.auth.id)) {
+                        if(user.id === Number(Request.auth.id)) {
                             check.dataValues.assigned = true;
+                            break;
                         } else{
                             check.dataValues.assigned = false;
                         }
