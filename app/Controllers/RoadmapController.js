@@ -6,7 +6,7 @@ const User = GlobalModel.users;
 const Roadmap = GlobalModel.roadmaps;
 const Skill = GlobalModel.skills;
 const UserRoadmap = GlobalModel.user_roadmaps;
-const Checkpoint = GlobalModel.roadmap_checkpoints;
+const Checkpoint = GlobalModel.checkpoints;
 const UserCheckpoints = GlobalModel.user_checkpoints;
 const SkillCategory = GlobalModel.skillsCategories;
 
@@ -21,6 +21,14 @@ const RoadmapSchema = require('./../Validators/RoadmapSchema');
 const CheckpointSchema = require('./../Validators/CheckpointSchema');
 const TodoSchema = require('./../Validators/TodoSchema');
 const Joi = require('joi');
+/**
+ *  SERVICES
+ * 
+ */
+const RoadmapService = require('./../Services/Roadmap');
+
+
+
 
 const RoadmapController = {
 
@@ -31,226 +39,17 @@ const RoadmapController = {
         Joi.validate(Request.body, RoadmapSchema.create, function(Error, Data) {
             if(!Error) {
 
-                Roadmap.create(Data).then(roadmap => {
-                    UserRoadmap.create({
-                       roadmap_id: roadmap.id,
-                       user_id: Data.creator_id
-                    });
+                RoadmapService.createRoadmap(Data).spread(async (roadmap,created) => {
+
+                    await RoadmapService.createUserRoadmap(Data.creator_id, roadmap.id);
                     Response.send(roadmap);
                 }).catch(Error => {
                     Response.send(400, Error);
                 });
-
             } else {
                 Response.send(400, Error);
             }
         })
-    },
-
-    createCheckpoint: async function(Request, Response) {
-
-        const body = Request.body;
-        body.roadmap_id = Request.params.id
-        body.creator_id = Request.auth.id;
-
-        Joi.validate(body, CheckpointSchema.create, function(Error, Data) {
-            if( !Error ) {
-
-                Checkpoint.create(Data).then(checkpoint => {
-
-
-                    UserCheckpoints.findOne({
-                        where: {
-                            user_id: Request.auth.id,
-                            roadmap_id: Request.params.id
-                        },
-                        order:[['index_number', 'DESC']]
-                    }).then(async lastIndex => {
-
-                        let Index = 0;
-
-                        if(lastIndex) {
-                            Index = lastIndex.index_number;
-                        }
-
-                        let user_checkpoint = await UserCheckpoints.create({
-
-                            user_id: Request.auth.id,
-                            checkpoint_id: checkpoint.id,
-                            roadmap_id: Request.params.id,
-                            index_number: Number(Index) + 1,
-                        });
-
-                        checkpoint.dataValues.user_checkpoints = user_checkpoint;
-
-                        let check = await Checkpoint.findById(checkpoint.id, {
-                          include: [
-                            {
-                              model:Todo,
-                              include:[{
-                                  model:UserTodos,
-                                  as:'todos_usertodos',
-                                  where: {
-                                      user_id: Request.params.id
-                                  }
-                              }]
-
-                            }
-                        ]
-                        })
-                        Response.send(checkpoint);
-
-                    }).catch(Error => {
-                        Response.send(400, Error);
-                    }) ;
-
-
-
-
-                }).catch(Error => {
-                    Response.send(400, Error);
-                });
-
-            } else {
-                Response.send(400, Error);
-            }
-        })
-    },
-
-    swapCheckpointPosition: function(Request, Response){
-
-        Joi.validate(Request.body, CheckpointSchema.swap, async function(Error, Data) {
-            if(!Error) {
-                let swapableCheckpoint = await UserCheckpoints.findOne({
-                    where: {
-                        user_id: Request.auth.id,
-                        checkpoint_id: Request.params.checkpoint_id,
-                        roadmap_id: Request.params.id
-                    }
-                });
-
-                let changebleCheckpoint = await UserCheckpoints.findOne({
-                    where: {
-                        user_id: Request.auth.id,
-                        roadmap_id: Request.params.id,
-                        index_number: Request.body.index
-                    }
-                });
-
-                if(changebleCheckpoint) {
-                    changebleCheckpoint.update({
-                        index_number: swapableCheckpoint.index_number
-                    }).catch( Error => {
-                        Response.send(400, Error);
-                        return;
-                    })
-                }
-
-                swapableCheckpoint.update({
-                    index_number: Data.index
-                }).then(swap => {
-                   Response.send({success: true, swap});
-                }).catch( Error => {
-                    Response.send(400, Error);
-                });
-
-
-            } else {
-                Response.send(400, Error)
-            }
-        });
-
-
-    },
-
-    assignToCheckpoint: async function(Request, Response) {
-
-        const body = {
-            user_id: Request.auth.id,
-            checkpoint_id: Request.params.checkpoint_id,
-            roadmap_id: Request.params.id
-        };
-
-        try{
-
-            let lastIndex = await UserCheckpoints.findOne({
-                where: {
-                    user_id: Request.auth.id,
-                    roadmap_id: Request.params.id
-                },
-                order:[['index_number', 'DESC']]
-            });
-
-           let checkpoint = await Checkpoint.findById(body.checkpoint_id, {
-               include: [
-                   {
-                       model: Roadmap
-                   },
-                   {
-                        model:Todo,
-                        include:[{
-                            model:UserTodos,
-                            as:'todos_usertodos',
-                            where: {
-                                user_id: Request.auth.id
-                            }
-                        },User]
-                    }
-               ]
-           });
-
-
-
-           let userRoadmap = await UserRoadmap.findOne({
-               where: {
-                   user_id: Request.auth.id,
-                   roadmap_id: Request.params.id
-               }
-           });
-
-            console.log( Request.params.id);
-
-           if(!checkpoint || !userRoadmap || checkpoint.roadmap_id !== Number(Request.params.id)) {
-               Response.send(400, {success: false, message: 'You can not assign this checkpoint'});return;
-           }
-
-
-        Joi.validate(body, CheckpointSchema.assign, async function(Error, Data) {
-            if(!Error) {
-
-
-                if(lastIndex.index_number > 0)
-                {
-                    Data.index_number = Number(lastIndex.index_number) + 1;
-                } else {
-                    Data.index_number = 1;
-                }
-
-                UserCheckpoints.findOrCreate({
-                    where:Data
-                }).spread((user_checkpoint, created) => {
-
-
-                    if(created) {
-
-                        checkpoint.dataValues.user_checkpoints = user_checkpoint;
-                        Response.send({success: true,checkpoint:checkpoint});
-                    } else {
-                        Response.send({success: false, message: 'You are already assigned to this checkpoint'});
-                    }
-
-                }).catch(Error => {
-                    Response.send(400, Error);
-                })
-            } else {
-                Response.send(400, Error);
-            }
-        })
-
-        }catch( Error ) {
-            Response.send(Error.message);
-            return;
-        }
     },
 
     assignToRoadmap: async function(Request, Response) {
@@ -263,12 +62,10 @@ const RoadmapController = {
         let roadmap = await Roadmap.findById(body.roadmap_id);
 
         Joi.validate(body, RoadmapSchema.assign, function(Error, Data) {
+
             if(!Error) {
-                UserRoadmap.findOrCreate({
-                    where:Data
-                }).spread(async (assign,created) => {
-
-
+                RoadmapService.createUserRoadmap(Data.user_id, Data.roadmap_id)
+                .spread(async (assign,created) => {
 
                     if(created) {
                         let roadmap = await Roadmap.findById(body.roadmap_id);
@@ -279,34 +76,26 @@ const RoadmapController = {
                             user_id: roadmap.creator_id
                           }
                         }).then(async checkpoints => {
+
                             for(let i in checkpoints) {
+
                               let checkpoint = checkpoints[i];
-                              await UserCheckpoints.findOrCreate({
-                                where: {
-                                  user_id: Request.auth.id,
-                                  checkpoint_id: checkpoint.checkpoint_id,
-                                  roadmap_id: roadmap.id,
-                                  index_number: checkpoint.index_number
-                                }
-                              });
+
+                              await RoadmapService.createUserCheckpoint(Request.auth.id,checkpoint.checkpoint_id, roadmap.id,checkpoint.index_number);
+
                             }
 
                             UserTodos.findAll({
                               where: {
-                                user_id: roadmap.creator_id
+                                user_id: roadmap.creator_id,
+                                roadmap_id: roadmap.id
                               }
                             }).then(async todos => {
 
-
-
                                 for(let todo of todos) {
-                                  await UserTodos.findOrCreate({
-                                    where: {
-                                      user_id: Request.auth.id,
-                                      todo_id: todo.todo_id
-                                    }
-                                  })
+                                  await RoadmapService.createUserTodo(Request.auth.id,todo.todo_id, 0, roadmap.id)
                                 }
+
                                 Response.send({success: true});return;
                             }).catch(Error => {
                               Response.send({title:"Todos creation error", message:Error.message})
@@ -328,45 +117,6 @@ const RoadmapController = {
 
     },
 
-    deleteAssignRoadmap: async function(Request, Response) {
-
-        UserRoadmap.destroy({
-            where:{
-                user_id: Request.auth.id,
-                roadmap_id: Request.params.id
-            }
-        }).then(user_roadmap => {
-            if(user_roadmap === 1) {
-                Response.send({success: true});
-            } else {
-                Response.send({success: false});
-
-            }
-
-        }).catch(Error => {
-            Response.send(400, Error)
-        })
-
-    },
-
-    deleteAssignCheckpoint: async function(Request, Response){
-        UserCheckpoints.destroy({
-            where:{
-                user_id: Request.auth.id,
-                checkpoint_id: Request.params.id
-            }
-        }).then(user_checkpoint => {
-            if(user_checkpoint === 1) {
-                Response.send({success: true});
-            } else {
-                Response.send({success: false});
-
-            }
-
-        }).catch(Error => {
-            Response.send(400, Error)
-        })
-    },
 
     searchRoadmaps: async function(Request, Response) {
 
@@ -395,17 +145,15 @@ const RoadmapController = {
         };
       }
 
-
-
       if(Request.query.category_id) {
         where.category_id = Request.query.category_id;
-      };
+      }
 
       if(Request.query.offset)
       {
         offset = Number(Request.query.offset);
       }
-      // Response.send(where);return
+
       try {
         let roadmaps = await Roadmap.findAll({
           where: where,
@@ -425,7 +173,7 @@ const RoadmapController = {
                 include: [Skill]
               }
           ],
-          limit:2,
+          limit:10,
           offset: offset,
           order:[['name','ASC']]
         });
@@ -484,17 +232,28 @@ const RoadmapController = {
             },{
                 model:SkillCategory
             }, {
-               model:User,
-               where: {
-                 id: Request.auth.id
-               }
+               model:User
             }]
         }).then(roadmap => {
+            roadmap.dataValues.assigned = false;
+            for(let user of roadmap.users) 
+            {
+                if(user.id == Request.auth.id) {
+                    roadmap.dataValues.assigned = true;
+                    break;
+                }
+            }
             Response.send(roadmap);
         }).catch(Error => {
             Response.send(400, Error.message);
         })
     },
+
+
+
+    /**
+     * TODOS
+     */
 
     createTodo: async function(Request, Response) {
         const body = {
@@ -504,28 +263,19 @@ const RoadmapController = {
             creator_id: Request.auth.id
         };
 
-        try{
 
-            let UserRoadmapExistence = await UserRoadmap.findOne({
-                where: {
-                    user_id: Request.auth.id,
-                    roadmap_id: Request.params.roadmap_id
-                }
-            });
 
-            let UserCheckpointExistance = await UserCheckpoints.findOne({
-                where: {
-                    user_id: Request.auth.id,
-                    checkpoint_id: Request.params.checkpoint_id
-                }
-            });
+        const check = RoadmapService.beforeTodoCreate({
+            creator_id: Request.auth.id,
+            roadmap_id: Request.params.roadmap_id,
+            checkpoint_id: Request.params.checkpoint_id
+        })
+        
+        console.log(check);
 
-            if(!UserRoadmapExistence || !UserCheckpointExistance) {
-                Response.send(400, {success: false, message: 'You can not create todo on this checkpoint'});
-            }
-
-        }catch( Error ) {
-            Response.send(400, Error);
+        if(check == false ) {
+            Response.send({success: false, error: 'You can not create this todo'});
+            return;
         }
 
         Joi.validate(body, TodoSchema.create, function(Error, Data) {
@@ -533,7 +283,8 @@ const RoadmapController = {
                 Todo.create(Data).then( todo => {
                    UserTodos.create({
                        todo_id: todo.id,
-                       user_id: Request.auth.id
+                       user_id: Request.auth.id,
+                       roadmap_id: Request.params.roadmap_id
                    }).then(user_todo => {
                         todo.dataValues.users = [];
                        todo.dataValues.users[0] = {
@@ -551,39 +302,21 @@ const RoadmapController = {
 
     assignTodo: async function(Request, Response) {
 
-        try{
+        const check = RoadmapService.beforeTodoAssign({
+            user_id: Request.auth.id,
+            roadmap_id: Request.params.roadmap_id,
+            checkpoint_id: Request.params.checkpoint_id,
+            id: Request.params.id
+        });
 
-            let UserRoadmapExistence = await UserRoadmap.findOne({
-                where: {
-                    user_id: Request.auth.id,
-                    roadmap_id: Request.params.roadmap_id
-                }
-            });
-
-            let UserCheckpointExistance = await UserCheckpoints.findOne({
-                where: {
-                    user_id: Request.auth.id,
-                    checkpoint_id: Request.params.checkpoint_id
-                }
-            });
-
-            let TodoExistance = await Todo.findById(Request.params.id);
-
-            if(!UserRoadmapExistence || !UserCheckpointExistance || TodoExistance.checkpoint_id !== Number(Request.params.checkpoint_id)) {
-                Response.send(400, {success: false, message: 'You can not assign to this todo'});
-                return;
-            }
-
-        }catch( Error ) {
-            Response.send(400, Error.message);
-            return;
+        if(check === false) {
+            Response.send({success:false, error: 'You can not assign this todo'});
         }
 
         Joi.validate({user_id: Request.auth.id, todo_id: Request.params.id}, TodoSchema.assign, function(Error, Data) {
             if( !Error ) {
-                UserTodos.findOrCreate({
-                    where: Data
-                }).spread((user_todo, created) => {
+                RoadmapService.createUserTodo(Data.user_id, Data.todo_id, Request.roadmap_id)
+                .spread((user_todo, created) => {
 
                     if(created) {
                         Response.send({success: true});
@@ -648,28 +381,293 @@ const RoadmapController = {
             Response.send(400, Error.message)
         })
     },
+   
 
-    discoverCheckpoints: async function(Request, Response) {
 
-        try {
-            let checkpoints = await Checkpoint.findAll({
-                where:{
-                    roadmap_id: Request.params.id,
-                    name: {
-                        [Op.like]: '%'+Request.query.name+'%'
+
+    updateTodo: async function(Request, Response) {
+        Todo.findOne({
+            where: {
+                checkpoint_id: Request.params.checkpoint_id,
+                id: Request.params.id,
+                craetor_id: Request.auth.id
+            }
+        }).then( todo => {
+            if(todo) {
+                Joi.validate(Request.body, TodoSchema.update, async (Error, Data) => {
+                    if( !Error ) {
+                       let todo = await todo.update(Request.body);
+                       Response.send({success: true, todo: todo});
+                    } else {
+                        Response.send({success: false, error: Error})
                     }
+                })
+               
+            }
+        })
+    },
+
+
+/** 
+ *  CHECKPOINTS
+ * 
+ * 
+*/      
+    assignToCheckpoint: async function(Request, Response) {
+
+        const body = {
+            user_id: Request.auth.id,
+            checkpoint_id: Request.params.checkpoint_id,
+            roadmap_id: Request.params.id
+        };
+
+        try{
+
+            let lastIndex = await UserCheckpoints.findOne({
+                where: {
+                    user_id: Request.auth.id,
+                    roadmap_id: Request.params.id
                 },
+                order:[['index_number', 'DESC']]
+            });
+
+            let checkpoint = await Checkpoint.findById(body.checkpoint_id, {
                 include: [
-                    Skill,
                     {
-                        model: User
+                        model: Roadmap
                     },
                     {
-                        model: User,
-                        as:'creator'
-                    }
+                            model:Todo,
+                            include:[{
+                                model:UserTodos,
+                                as:'todos_usertodos',
+                            },User]
+                        }
                 ]
             });
+
+
+
+            let userRoadmap = await UserRoadmap.findOne({
+                where: {
+                    user_id: Request.auth.id,
+                    roadmap_id: Request.params.id
+                }
+            });
+
+            console.log( Request.params.id);
+
+            if(!checkpoint || !userRoadmap || checkpoint.roadmap_id !== Number(Request.params.id)) {
+                Response.send(400, {success: false, message: 'You can not assign this checkpoint'});return;
+            }
+
+
+            Joi.validate(body, CheckpointSchema.assign, async function(Error, Data) {
+                if(!Error) {
+
+                    if(lastIndex.index_number > 0)
+                    {
+                        Data.index_number = Number(lastIndex.index_number) + 1;
+                    } else {
+                        Data.index_number = 1;
+                    }
+
+                    UserCheckpoints.findOrCreate({
+                        where:Data
+                    }).spread((user_checkpoint, created) => {
+
+                        if(created) {
+                            Todo.findAll({
+                                where: {
+                                    creator_id: checkpoint.creator_id,
+                                    checkpoint_id: checkpoint.id
+                                }
+                            }).then(async todos => {
+
+                                for(let todo of todos) {
+                                    await UserTodos.findOrCreate({
+                                    where: {
+                                        user_id: Request.auth.id,
+                                        todo_id: todo.id
+                                    }
+                                    })
+                                }
+
+                                checkpoint.dataValues.user_checkpoints = user_checkpoint;
+                                Response.send({success: true,checkpoint:checkpoint});
+                            })
+
+                        } else {
+                            Response.send({success: false, message: 'You are already assigned to this checkpoint'});
+                        }
+
+                    }).catch(Error => {
+                        Response.send(400, Error);
+                    })
+                } else {
+                    Response.send(400, Error);
+                }
+            })
+
+        }catch( Error ) {
+            Response.send(Error.message);
+            return;
+        }
+    },
+
+    deleteAssignRoadmap: async function(Request, Response) {
+
+        UserRoadmap.destroy({
+            where:{
+                user_id: Request.auth.id,
+                roadmap_id: Request.params.id
+            }
+        }).then(user_roadmap => {
+            if(user_roadmap === 1) {
+                Response.send({success: true});
+            } else {
+                Response.send({success: false});
+
+            }
+
+        }).catch(Error => {
+            Response.send(400, Error)
+        })
+
+    },
+    createCheckpoint: async function(Request, Response) {
+
+        const body = Request.body;
+        body.roadmap_id = Request.params.id
+        body.creator_id = Request.auth.id;
+
+        Joi.validate(body, CheckpointSchema.create, function(Error, Data) {
+            if( !Error ) {
+
+                Checkpoint.create(Data).then( async checkpoint => {
+                    
+                    UserCheckpoints.findOne({
+                        where: {
+                            user_id: Request.auth.id,
+                            roadmap_id: Request.params.id
+                        },
+                        order:[['index_number', 'DESC']]
+                    }).then(async lastIndex => {
+
+                        let Index = 0;
+
+                        if(lastIndex) {
+                            Index = lastIndex.index_number;
+                        }
+
+                        let user_checkpoint = await UserCheckpoints.create({
+
+                            user_id: Request.auth.id,
+                            checkpoint_id: checkpoint.id,
+                            roadmap_id: Request.params.id,
+                            index_number: Number(Index) + 1,
+                        });
+
+                        checkpoint.dataValues.user_checkpoints = user_checkpoint;
+
+                        let check = await Checkpoint.findById(checkpoint.id, {
+                        include: [
+                            {
+                            model:Todo,
+                            include:[{
+                                model:UserTodos,
+                                as:'todos_usertodos',
+                                where: {
+                                    user_id: Request.params.id
+                                }
+                            }]
+
+                            }
+                        ]
+                        })
+                        Response.send(checkpoint);
+
+                    }).catch(Error => {
+                        Response.send(400, Error);
+                    }) ;
+
+
+
+
+                }).catch(Error => {
+                    Response.send(400, Error.message);
+                });
+
+            } else {
+                Response.send(400, Error);
+            }
+        })
+    },
+    deleteAssignCheckpoint: async function(Request, Response){
+        UserCheckpoints.destroy({
+            where:{
+                user_id: Request.auth.id,
+                checkpoint_id: Request.params.id
+            }
+        }).then(user_checkpoint => {
+            if(user_checkpoint === 1) {
+                Response.send({success: true});
+            } else {
+                Response.send({success: false});
+
+            }
+
+        }).catch(Error => {
+            Response.send(400, Error)
+        })
+    },
+
+    forceDeleteCheckpoint: async (Request, Response) => {
+        Checkpoint.findOne({
+            where: {
+                roadmap_id: Request.params.roadmap_id,
+                id: Request.params.id
+            }
+        }).then(checkpoint => {
+            if(checkpoint && checkpoint.creator_id == Request.auth.id) {
+                checkpoint.destroy();
+                Response.send({success:true})
+            }
+        })
+    },
+    discover: async function(Request, Response) {
+
+        let roadmap = await Roadmap.findById(Request.params.id);
+
+        Checkpoint.findAll({
+            where: {
+                name: {
+                    [Op.like]: '%'+Request.query.name+'%'
+                }
+            },
+            include: [
+                {
+                    model:Roadmap,
+                    where: {
+                        category_id: roadmap.category_id,
+                        hidden: false
+                    },
+                    include: [{
+                        model: SkillCategory,
+                    }]
+                },
+                {
+                    model:User,
+                    as:'creator'
+                },
+                {
+                    model:User
+                },
+                {
+                    model: Skill
+                }
+            ]
+        }).then(checkpoints => {
 
             for(let check of checkpoints) {
                 if(check.users.length > 0){
@@ -685,14 +683,9 @@ const RoadmapController = {
                 }
 
             }
-
             Response.send(checkpoints);
-        } catch(Error) {
-            Response.send(400, Error.message);
-        }
-
+        })
     },
-
     updatePositionOfCheckpoints: async function(Request, Response) {
 
         try {
@@ -716,7 +709,60 @@ const RoadmapController = {
             Response.send(400, Error.message);
         }
 
-    }
+    },
+    mergeCheckpoint: (Request, Response) => {
+        Checkpoint.findById(Request.params.id,{
+            include: [
+                {
+                    model:Skill
+                }
+            ]
+        }).then(async (checkpoint) => {
+            let todos = await Todo.findAll({
+                where: {
+                    creator_id: checkpoint.creator_id,
+                    checkpoint_id: checkpoint.id
+                },
+                include:[{
+                    model:UserTodos,
+                    as:'todos_usertodos',
+                    where: {
+                        user_id: checkpoint.creator_id
+                    }
+                },User]
+            });
+            
+            UserCheckpoints.findOrCreate({
+                where: {
+                    user_id: Request.auth.id,
+                    checkpoint_id: checkpoint.id,
+                    roadmap_id: Request.params.roadmap_id
+                } 
+            }).spread(async (checkpointMerge, create) => {
+
+                for(let todo of todos) {
+
+                    UserTodos.create({
+                        user_id: Request.auth.id,
+                        todo_id: todo.id,
+                        roadmap_id: Request.params.roadmap_id,
+                    });
+                    
+                }
+                checkpoint.dataValues.todos = [];
+                checkpoint.dataValues.todos = todos;
+                Response.send(checkpoint);
+            }).catch(Error => {
+                Response.send(Error);
+                return;
+            })
+
+           
+        }).catch(Error => {
+            Response.send(Error);
+        });
+        
+    },
 };
 
 module.exports = RoadmapController;

@@ -10,7 +10,7 @@ const SkillLogs = GlobalModel.user_skills_logs;
 const UserSettings = GlobalModel.user_settings;
 const Roadmap = GlobalModel.roadmaps;
 const UserRoadmap = GlobalModel.user_roadmaps;
-const Checkpoint = GlobalModel.roadmap_checkpoints;
+const Checkpoint = GlobalModel.checkpoints;
 const UserCheckpoints = GlobalModel.user_checkpoints;
 const Todo = GlobalModel.todos;
 const UserTodos = GlobalModel.user_todos;
@@ -559,7 +559,23 @@ const UserController = {
       User.findById(Request.params.id, {
           include: [
               {
-                  model: Roadmap
+				  model: Roadmap,
+				  include:[
+					{
+						 model:User,
+						 as: 'Creator'
+					},
+					{
+					  model:User
+					},
+					{
+					  model: SkillCategory
+					},
+					{
+					  model: Checkpoint,
+					  include: [Skill]
+					}
+				]
               },
           ]
       }).then(user => {
@@ -569,27 +585,52 @@ const UserController = {
 			})
   },
   getUserRoadmapCheckpoints: async function(Request, Response) {
+
+	const RoadmapCreator = await Roadmap.findById(Request.params.roadmap_id);
+	const UserRoadmapAssigned = await UserRoadmap.findOne({
+		where: {
+			user_id: Request.auth.id,
+			roadmap_id: Request.params.roadmap_id
+		}
+	});
+
     User.findById(Request.params.id, {
         include: [
               {
-                  model:Checkpoint,
-                  where: {
-                      roadmap_id: Request.params.roadmap_id
-                  },
+				  model:Checkpoint,
+				  through: {
+					where: {
+						roadmap_id: Request.params.roadmap_id
+					}
+				  },
                   include: [{
                       model:Todo,
                       include:[{
                           model:UserTodos,
-                          as:'todos_usertodos',
-                          where: {
-                              user_id: Request.params.id
-                          }
+						  as:'todos_usertodos',
+						  where: {
+							  user_id: Request.auth.id,
+							  roadmap_id: Request.params.roadmap_id
+						  }
                       },User]
-                  }]
+				  },
+				  {
+					  model: Skill
+				  }
+				]
               }
           ]
-      }).then(user => {
-          Response.send(user.roadmap_checkpoints);
+      }).then( async user => {
+		  if(UserRoadmapAssigned) {
+			const checkpoints = [];
+
+			Response.send(user.checkpoints);
+		  }else {
+			
+			  let newRequest = Request;
+			  newRequest.params.id = RoadmapCreator.creator_id;
+			  this.getUserRoadmapCheckpoints(newRequest, Response);
+		  }
       }).catch(Error => {
           Response.send(400, {error: Error.message});
       })
@@ -638,15 +679,20 @@ const UserController = {
 				}
 			],
 		}).then(async Data => {
+
+			if(!Data) {
+				Response.send({data:null, stats: null});
+				return;
+			}
 			let stats = {
 				users: Data.users.length,
-				checkpoints: Data.roadmap_checkpoints.length
+				checkpoints: Data.checkpoints.length
 			}
 			if(Data.creator_id != Request.auth.id) {
 				Response.send({error:'You are not a founder of this roadmap'});
 				return;
 			}
-			Data.roadmap_checkpoints = Data.roadmap_checkpoints.map(function(item){
+			Data.checkpoints = Data.checkpoints.map(function(item){
 				item.dataValues.type = 'checkpoint';
 				item = item.dataValues;
 				item.group_field = moment(item.updated_at).format('Y-MM-DD');
@@ -664,7 +710,7 @@ const UserController = {
 				return item;
 			})
 
-			let todos = await sequelize.query('SELECT todos.*, creator.name as `creatorName`, RCH.name as `checkpoint` FROM `roadmaps` as `R` INNER JOIN `roadmap_checkpoints` as `RCH` ON `R`.`id` = `RCH`.`roadmap_id` INNER JOIN `todos` ON `RCH`.`id` = `todos`.`checkpoint_id` INNER JOIN `users` AS `creator` ON `todos`.`creator_id` = `creator`.`id` WHERE todos.creator_id <> ' + Request.auth.id + '',{ type: sequelize.QueryTypes.SELECT});
+			let todos = await sequelize.query('SELECT todos.*, creator.name as `creatorName`, RCH.name as `checkpoint` FROM `roadmaps` as `R` INNER JOIN `checkpoints` as `RCH` ON `R`.`id` = `RCH`.`roadmap_id` INNER JOIN `todos` ON `RCH`.`id` = `todos`.`checkpoint_id` INNER JOIN `users` AS `creator` ON `todos`.`creator_id` = `creator`.`id` WHERE todos.creator_id <> ' + Request.auth.id + '',{ type: sequelize.QueryTypes.SELECT});
 
 			todos = todos.map(function(item) {
 				item.type = 'todo';
@@ -673,7 +719,7 @@ const UserController = {
 				return item;
 			})
 
-			let data = todos.concat(Data.users).concat(Data.roadmap_checkpoints);
+			let data = todos.concat(Data.users).concat(Data.checkpoints);
 
 			data.sort(function(a,b) {
 				if(a.updated_at < b.updated_at) {

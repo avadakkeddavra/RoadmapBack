@@ -97,7 +97,7 @@ router.post('/user/bg', upload.single('bg'), UserController.uploadBg);
 
 router.get('/user/roadmaps/generate',authMiddleware.auth, UserController.generateRoadmapsFromAims.bind(UserController));
 router.get('/user/:id/roadmaps', authMiddleware.auth,UserController.getUserRoadmaps);
-router.get('/user/:id/roadmap/:roadmap_id/checkpoints', authMiddleware.auth,UserController.getUserRoadmapCheckpoints)
+router.get('/user/:id/roadmap/:roadmap_id/checkpoints', authMiddleware.auth,UserController.getUserRoadmapCheckpoints.bind(UserController))
 router.get('/user/:id/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todos', authMiddleware.auth,UserController.getUserRoadmapCheckpointTodos);
 router.get('/user/roadmap-stats/:id',authMiddleware.auth, UserController.getUserRoadmapStatistics);
 /**
@@ -116,13 +116,17 @@ router.get('/roadmap/:id',authMiddleware.auth, RoadmapController.getSignleRoadma
 router.post('/roadmap',authMiddleware.auth, RoadmapController.create);
 router.post('/roadmap/:id/assign',authMiddleware.auth, RoadmapController.assignToRoadmap);
 router.delete('/roadmap/:id/unassign', authMiddleware.auth, RoadmapController.deleteAssignRoadmap);
+router.delete('/roadmap/:roadmap_id/checkpoint/:id', authMiddleware.auth, RoadmapController.forceDeleteCheckpoint);
 
-router.get('/roadmap/:id/checkpoint/discover',authMiddleware.auth,  RoadmapController.discoverCheckpoints);
+
+router.get('/roadmap/:id/checkpoint/discover',authMiddleware.auth,  RoadmapController.discover);
+router.get('/roadmap/:id/checkpoint/discovertest',authMiddleware.auth,  RoadmapController.discover);
+
 router.post('/roadmap/:id/checkpoint',authMiddleware.auth,  RoadmapController.createCheckpoint);
-router.post('/roadmap/:id/checkpoint/:checkpoint_id/swap',authMiddleware.auth,  RoadmapController.swapCheckpointPosition);
 
 router.delete('/roadmap/:roadmap_id/checkpoint/:id/unassign',authMiddleware.auth,  RoadmapController.deleteAssignCheckpoint);
 router.post('/roadmap/:id/checkpoint/:checkpoint_id/assign',authMiddleware.auth,  RoadmapController.assignToCheckpoint);
+router.post('/roadmap/:roadmap_id/checkpoint/:id/merge',authMiddleware.auth,  RoadmapController.mergeCheckpoint);
 
 
 /**
@@ -130,6 +134,7 @@ router.post('/roadmap/:id/checkpoint/:checkpoint_id/assign',authMiddleware.auth,
  *
  * */
 router.post('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo', authMiddleware.auth, RoadmapController.createTodo);
+router.put('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id', authMiddleware.auth, RoadmapController.updateTodo)
 router.post('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id/assign', authMiddleware.auth, RoadmapController.assignTodo);
 router.delete('/todo/:id/unassign', authMiddleware.auth, RoadmapController.deleteAssignTodo);
 router.put('/todo/:id/check', authMiddleware.auth, RoadmapController.checkTodo);

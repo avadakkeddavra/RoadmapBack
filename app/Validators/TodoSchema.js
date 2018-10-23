@@ -12,7 +12,13 @@ const AssignSchema = Joi.object().keys({
     todo_id: Joi.number().min(1).required()
 });
 
+const UpdateSchema = Joi.object().keys({
+    name: Joi.string().min(3).max(255),
+    description: Joi.string(),
+});
+
 module.exports = {
     create: CreateSchema,
-    assign: AssignSchema
+    assign: AssignSchema,
+    update: UpdateSchema
 };

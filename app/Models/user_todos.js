@@ -13,6 +13,10 @@ module.exports = function (sequelize,Sequelize) {
             type: Sequelize.INTEGER,
             allowNull: false
         },
+        roadmap_id: {
+            type: Sequelize.INTEGER,
+            allowNull: false
+        },
         checked: {
             type: Sequelize.TINYINT,
             defaultValue: 0

@@ -1,5 +1,5 @@
 module.exports = function (sequelize,Sequelize) {
-    return sequelize.define('roadmap_checkpoints', {
+    return sequelize.define('checkpoints', {
         id: {
             type: Sequelize.INTEGER,
             autoIncrement: true,
