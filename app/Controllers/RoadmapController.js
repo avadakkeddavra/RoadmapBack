@@ -122,8 +122,8 @@ const RoadmapController = {
 
       let name = ' ';
       let where = {
+        hidden: 0,
         [Op.or] : {
-          hidden: 0,
           creator_id: Request.auth.id
         }
       };
@@ -131,6 +131,7 @@ const RoadmapController = {
       if(Request.query.name) {
         name = '%'+Request.query.name+'%';
         where = {
+          hidden: 0,
           [Op.or]: [
             {
               name:{
@@ -468,7 +469,7 @@ const RoadmapController = {
             Joi.validate(body, CheckpointSchema.assign, async function(Error, Data) {
                 if(!Error) {
 
-                    if(lastIndex.index_number > 0)
+                    if(lastIndex && lastIndex.index_number > 0)
                     {
                         Data.index_number = Number(lastIndex.index_number) + 1;
                     } else {
@@ -489,10 +490,11 @@ const RoadmapController = {
 
                                 for(let todo of todos) {
                                     await UserTodos.findOrCreate({
-                                    where: {
-                                        user_id: Request.auth.id,
-                                        todo_id: todo.id
-                                    }
+                                        where: {
+                                            user_id: Request.auth.id,
+                                            todo_id: todo.id,
+                                            roadmap_id: Request.params.id
+                                        }
                                     })
                                 }
 

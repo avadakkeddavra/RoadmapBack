@@ -28,6 +28,8 @@ const Joi = require('joi');
 const moment = require('moment');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const RoadmapService = require('./../Services/Roadmap');
+
 
 const UserController = {
 
@@ -485,8 +487,17 @@ const UserController = {
 
 		if(Request.auth.roadmap_generated)
 		{
-			Response.send({success: false, message: 'You are alreary generate your roadmaps'});
-			return;
+
+			Roadmap.findAll({
+				where: {
+					creator_id: Request.auth.id,
+					hidden: 1
+				}
+			}).then(roadmaps => {
+				for(let roadmap of roadmaps) {
+					roadmap.destroy();
+				}
+			}) 
 		}
 
 		SkillCategory.findAll({
@@ -515,7 +526,8 @@ const UserController = {
 					Request.auth.roadmap_generated = 1;
 					Request.auth.save();
 				} else {
-					Response.send(400, {success: false, message: 'You don\'t have skill aims to build roadmaps. Please fill it'});
+					Response.status(400);
+					Response.send( {success: false, message: 'You don\'t have skill aims to build roadmaps. Please fill it'});
 					return;
 				}
 
@@ -585,55 +597,31 @@ const UserController = {
 			})
   },
   getUserRoadmapCheckpoints: async function(Request, Response) {
-
-	const RoadmapCreator = await Roadmap.findById(Request.params.roadmap_id);
-	const UserRoadmapAssigned = await UserRoadmap.findOne({
-		where: {
-			user_id: Request.auth.id,
-			roadmap_id: Request.params.roadmap_id
+	try {
+		const RoadmapCreator = await Roadmap.findById(Request.params.roadmap_id);
+		const UserRoadmapAssigned = await UserRoadmap.findOne({
+			where: {
+				user_id: Request.auth.id,
+				roadmap_id: Request.params.roadmap_id
+			}
+		});
+	
+		let roadmap_id = Request.params.roadmap_id;
+		let user_id = Request.auth.id;
+		let id = Request.params.id;
+	
+		
+		if(!UserRoadmapAssigned) {
+			id = RoadmapCreator.creator_id;
 		}
-	});
+	
+		const CheckpointsArray = await RoadmapService.getUserCheckpoints(id, roadmap_id, user_id);
+	
+		Response.send(CheckpointsArray.checkpoints);
+	} catch(Error) {
+		Response.send({success: false, message: Error.message, stack: Error.stack});
+	}
 
-    User.findById(Request.params.id, {
-        include: [
-              {
-				  model:Checkpoint,
-				  through: {
-					where: {
-						roadmap_id: Request.params.roadmap_id
-					}
-				  },
-                  include: [{
-                      model:Todo,
-                      include:[{
-                          model:UserTodos,
-						  as:'todos_usertodos',
-						  where: {
-							  user_id: Request.auth.id,
-							  roadmap_id: Request.params.roadmap_id
-						  }
-                      },User]
-				  },
-				  {
-					  model: Skill
-				  }
-				]
-              }
-          ]
-      }).then( async user => {
-		  if(UserRoadmapAssigned) {
-			const checkpoints = [];
-
-			Response.send(user.checkpoints);
-		  }else {
-			
-			  let newRequest = Request;
-			  newRequest.params.id = RoadmapCreator.creator_id;
-			  this.getUserRoadmapCheckpoints(newRequest, Response);
-		  }
-      }).catch(Error => {
-          Response.send(400, {error: Error.message});
-      })
   },
   getUserRoadmapCheckpointTodos: async function(Request, Response) {
       User.findById(Request.params.id, {

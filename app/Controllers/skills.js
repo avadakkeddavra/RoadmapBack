@@ -5,6 +5,8 @@ const globalModel =  require('./../Models/index');
 const Skills = globalModel.skills;
 const UserSkills = globalModel.userSkills;
 const SkillsCategories = globalModel.skillsCategories;
+const Roadmap = globalModel.roadmaps;
+const Checkpoint = globalModel.checkpoints;
 
 const skillLogs = globalModel.user_skills_logs;
 const sequelize = globalModel.sequelize;
@@ -18,6 +20,7 @@ const skills = {};
 const User = globalModel.users;
 const Joi = require('joi');
 const SkillsSchema = require('./../Validators/SkillsSchema');
+const RoadmapService = require('./../Services/Roadmap');
 
 
 skills.update = async function(Request, Response) {
@@ -117,9 +120,50 @@ skills.addSkills = async function (request, response)
                 delete update.userId;
 
                 await userSkills.update(update);
-                Emitter.emit('update_skill');
-                response.send(userSkills);
 
+                if(Data.disposition) {
+                    console.log('dasdasdasdasd');
+                    Roadmap.findOne({
+                        where: {
+                            creator_id: request.auth.id,
+                            hidden: 1,
+                            category_id: userSkills.skill.skillsCategory.id
+                        },
+                        include: [Checkpoint]
+                    }).then(roadmap => {
+                    if(roadmap) {
+                        let flag = false;
+                        for(let check of roadmap.checkpoints) {
+                            if(check.skill_id === userSkills.skillId) {   
+                                flag = true;
+
+                                if( userSkills.disposition <= 6 ) {
+                                    check.destroy();
+                                }
+
+                                break;
+                            }
+                        }
+
+                        if(!flag && userSkills.disposition >= 6) {
+                            RoadmapService.createCheckpoint({
+                                name: 'Learning of '+userSkills.skill.title,
+                                creator_id: request.auth.id,
+                                roadmap_id: roadmap.id,
+                                skill_id: userSkills.skillId
+                            }).spread( (checkpoint, created) => {
+                                console.log(checkpoint.id)
+                                RoadmapService.createUserCheckpoint(request.auth.id,checkpoint.id, roadmap.id,roadmap.checkpoints.length +1)
+                            })
+                        }
+
+                    }
+                    }).catch( Error => {
+                        response.send(Error.message)
+                    }) 
+                }
+
+                response.send(userSkills);
             }else{
                 response.status(400);
                 response.send({

@@ -113,6 +113,36 @@ const RoadmapService = {
             return Error;
         }
 
+    },
+    getUserCheckpoints: async (id, roadmap_id,user_id) => {
+
+        return await User.findById(id, {
+            include: [
+                {
+                    model:Checkpoint,
+                    through: {
+                        where: {
+                            roadmap_id: roadmap_id
+                        }
+                    },
+                    include: [{
+                        model:Todo,
+                        include:[{
+                            model:UserTodos,
+                            as:'todos_usertodos',
+                            where: {
+                                user_id: id,
+                                roadmap_id:roadmap_id
+                            }
+                        },User]
+                    },
+                    {
+                        model: Skill
+                    }
+                    ]
+                }
+            ]
+        })
     }
 }
 
