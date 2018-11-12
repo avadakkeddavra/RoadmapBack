@@ -9,6 +9,7 @@ const UserRoadmap = GlobalModel.user_roadmaps;
 const Checkpoint = GlobalModel.checkpoints;
 const UserCheckpoints = GlobalModel.user_checkpoints;
 const SkillCategory = GlobalModel.skillsCategories; 
+const Mentorship = GlobalModel.mentorship;
 
 const Todo = GlobalModel.todos;
 const UserTodos = GlobalModel.user_todos;
@@ -18,6 +19,7 @@ const sequelize = GlobalModel.sequelize;
 const RoadmapService = {
 
     createRoadmap: (Data) => {
+        delete Data.type;
         return Roadmap.findOrCreate({where:Data});
     },
 
@@ -29,12 +31,34 @@ const RoadmapService = {
             }
         })
     },
-
+    createMentorshipRoadmap: (user_id, roadmap_id) => {
+        return  Mentorship.findOrCreate({
+            where: {
+                user_id: user_id,
+                roadmap_id: roadmap_id
+            }
+        })
+    },
     createCheckpoint: (Data) => {
         return Checkpoint.findOrCreate({where:Data});
     },
 
- 
+    createCheckpointFromMentor: async (Request, Response, roadmap, body) => {
+        let AssignedUsers = roadmap.users;
+
+        Checkpoint.create(body).then(checkpoint => {
+            for(let user of AssignedUsers) {
+                UserCheckpoints.create({
+                    user_id: user.id,
+                    checkpoint_id: checkpoint.id,
+                    roadmap_id: roadmap.id
+                })
+            }
+            checkpoint.getSkill();
+            Response.send(checkpoint);
+        });
+    },
+
     createUserCheckpoint: async (user_id, checkpoint_id, roadmap_id, index) => {
         return await UserCheckpoints.findOrCreate({
             where: {
@@ -49,7 +73,23 @@ const RoadmapService = {
     createTodo:  (Data) => {
         return Todo.create(Data)
     },
+    createTodoFromMentor: async (Request, Response, roadmap, body) => {
+        let checkpoint = await Checkpoint.findById(body.checkpoint_id, {
+            include: [User]
+        });
 
+        Todo.create(body).then( async todo => {
+            for(let user of checkpoint.users) {
+                await UserTodos.create({
+                    user_id: user.id,
+                    todo_id: todo.id,
+                    roadmap_id: roadmap.id
+                })
+            }
+            Response.send({todo});
+        })
+
+    },
     createUserTodo: async  (user_id, todo_id, checked = 0, roadmap_id) => {
         return await UserTodos.create({
             user_id: user_id,
@@ -114,7 +154,7 @@ const RoadmapService = {
         }
 
     },
-    getUserCheckpoints: async (id, roadmap_id,user_id) => {
+    getUserCheckpoints: async (id, roadmap_id, user_id) => {
 
         return await User.findById(id, {
             include: [
@@ -134,11 +174,37 @@ const RoadmapService = {
                                 user_id: id,
                                 roadmap_id:roadmap_id
                             }
-                        },User]
+                        },{
+                            model:User,
+                            as: 'creator'
+                        }, {
+                            model: User
+                        } ]
                     },
                     {
                         model: Skill
                     }
+                    ]
+                }
+            ]
+        })
+    },
+
+    getRoadmapCheckpoints: async (roadmap_id) => {
+        return await Roadmap.findById(roadmap_id, {
+            include: [
+                {
+                    model:Checkpoint,
+                    include: [{
+                        model:Todo,
+                        include:[User,{
+                            model:User,
+                            as: 'creator'
+                        }]
+                    },
+                        {
+                            model: Skill
+                        }
                     ]
                 }
             ]

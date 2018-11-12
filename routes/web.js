@@ -137,5 +137,7 @@ router.post('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo', authMiddlewar
 router.put('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id', authMiddleware.auth, RoadmapController.updateTodo)
 router.post('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id/assign', authMiddleware.auth, RoadmapController.assignTodo);
 router.delete('/todo/:id/unassign', authMiddleware.auth, RoadmapController.deleteAssignTodo);
-router.put('/todo/:id/check', authMiddleware.auth, RoadmapController.checkTodo);
+router.put('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id/check', authMiddleware.auth, RoadmapController.checkTodo);
+
+router.post('/roadmap/:id/setmentor', authMiddleware.auth, authMiddleware.admin, RoadmapController.setMentor);
 module.exports = router;

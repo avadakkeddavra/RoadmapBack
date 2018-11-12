@@ -1,4 +1,3 @@
-// Initialize express;
 require('dotenv').config({path: './.env'})
 const express = require('express');
 const app = express();
@@ -6,10 +5,8 @@ const bodyParser = require('body-parser');
 
 require('./app/Models/connection');
 
-
 app.use(function (req, res, next)
 {
-    // console.log('-=-=q-e=q-e=qw-e=qw-e=qw-e=qw-ec=qw-ec=qw-ec=qw-ce=qw-ec=qw-ce=qw-ec=qw-ce=qw-')
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
     res.setHeader('Access-Control-Allow-Headers', '*');

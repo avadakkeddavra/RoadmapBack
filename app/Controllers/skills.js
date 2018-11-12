@@ -122,7 +122,7 @@ skills.addSkills = async function (request, response)
                 await userSkills.update(update);
 
                 if(Data.disposition) {
-                    console.log('dasdasdasdasd');
+
                     Roadmap.findOne({
                         where: {
                             creator_id: request.auth.id,
@@ -486,7 +486,6 @@ skills.compare = async function(Request, Response) {
             }
         ]
     }).then( async user => {
-
 
         let where = {
             userId: {

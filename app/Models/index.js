@@ -45,11 +45,16 @@ require('./relations/users')(db);
  *  TODOS
  *
  * */
+db.mentorship.belongsTo(db.roadmaps, {as: 'roadmap', foreignKey: 'roadmap_id'});
+db.mentorship.belongsTo(db.roadmaps, {as: 'mentor', foreignKey: 'user_id'});
 
 db.todos.belongsToMany(db.users, {through: 'user_todos', foreignKey: 'todo_id'})
 db.todos.hasMany(db.user_todos, {as:'todos_usertodos',foreignKey: 'todo_id'})
 db.todos.belongsTo(db.users, {as:'creator', foreignKey:'creator_id'})
+db.todos.belongsTo(db.checkpoints, {foreignKey: 'checkpoint_id'})
 
+db.user_todos.belongsTo(db.roadmaps, {foreignKey: 'roadmap_id'});
+db.user_todos.belongsTo(db.todos, {foreignKey: 'todo_id'});
 
 
 db.skills.belongsTo(db.skillsCategories, { foreignKey: 'categoryId' });

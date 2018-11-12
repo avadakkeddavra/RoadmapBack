@@ -1,5 +1,5 @@
 module.exports = function (sequelize,Sequelize) {
-    return sequelize.define('user_todos', {
+    return sequelize.define('mentorship', {
         id: {
             type: Sequelize.INTEGER,
             autoIncrement: true,
@@ -7,13 +7,9 @@ module.exports = function (sequelize,Sequelize) {
         },
         user_id: {
             type: Sequelize.INTEGER,
-            allowNull: false
-        },
-        todo_id: {
-            type: Sequelize.INTEGER,
             allowNull: false,
             references: {
-                model: 'todos',
+                model: 'users',
                 key: 'id'
             }
         },
@@ -25,10 +21,6 @@ module.exports = function (sequelize,Sequelize) {
                 key: 'id'
             }
         },
-        checked: {
-            type: Sequelize.TINYINT,
-            defaultValue: 0
-        },
         created_at: {
             type: Sequelize.DATE,
             defaultValue: sequelize.literal('CURRENT_TIMESTAMP')
@@ -38,6 +30,7 @@ module.exports = function (sequelize,Sequelize) {
             defaultValue: sequelize.literal('CURRENT_TIMESTAMP')
         },
     }, {
-        timestamps: false
+        timestamps: false,
+        freezeTableName: true,
     });
 };

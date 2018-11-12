@@ -14,6 +14,8 @@ const Checkpoint = GlobalModel.checkpoints;
 const UserCheckpoints = GlobalModel.user_checkpoints;
 const Todo = GlobalModel.todos;
 const UserTodos = GlobalModel.user_todos;
+const Mentorship = GlobalModel.mentorship;
+
 const Op = GlobalModel.Sequelize.Op;
 const sequelize = GlobalModel.sequelize;
 /*
@@ -572,6 +574,7 @@ const UserController = {
           include: [
               {
 				  model: Roadmap,
+				  as:'roadmaps',
 				  include:[
 					{
 						 model:User,
@@ -589,23 +592,62 @@ const UserController = {
 					}
 				]
               },
+			  {
+			  	model: Roadmap,
+				as: 'mentor_roadmaps',
+                  include:[
+                      {
+                          model:User,
+                          as: 'Creator'
+                      },
+                      {
+                          model:User
+                      },
+                      {
+                          model: SkillCategory
+                      },
+                      {
+                          model: Checkpoint,
+                          include: [Skill]
+                      }
+                  ]
+			  }
           ]
       }).then(user => {
-          Response.send(user.roadmaps);
+          Response.send({roadmaps:user.roadmaps, mentor_roadmaps: user.mentor_roadmaps});
       }).catch(Error => {
-					Response.send(Error.message)
-			})
+      	Response.send(Error.message)
+      })
   },
   getUserRoadmapCheckpoints: async function(Request, Response) {
 	try {
 		const RoadmapCreator = await Roadmap.findById(Request.params.roadmap_id);
+
 		const UserRoadmapAssigned = await UserRoadmap.findOne({
 			where: {
 				user_id: Request.auth.id,
 				roadmap_id: Request.params.roadmap_id
 			}
 		});
-	
+
+        const UserRoadmapMentorship = await Mentorship.findOne({
+            where: {
+                user_id: Request.auth.id,
+                roadmap_id: Request.params.roadmap_id
+            }
+        });
+
+        if(UserRoadmapMentorship) {
+            RoadmapService.getRoadmapCheckpoints(Request.params.roadmap_id)
+                .then(response => {
+                    Response.send(response.checkpoints)
+                })
+                .catch(error => {
+                    Response.send(error);
+                })
+            return;
+        }
+
 		let roadmap_id = Request.params.roadmap_id;
 		let user_id = Request.auth.id;
 		let id = Request.params.id;

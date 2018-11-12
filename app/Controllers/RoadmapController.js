@@ -9,6 +9,7 @@ const UserRoadmap = GlobalModel.user_roadmaps;
 const Checkpoint = GlobalModel.checkpoints;
 const UserCheckpoints = GlobalModel.user_checkpoints;
 const SkillCategory = GlobalModel.skillsCategories;
+const Mentorship = GlobalModel.mentorship;
 
 const Todo = GlobalModel.todos;
 const UserTodos = GlobalModel.user_todos;
@@ -40,9 +41,14 @@ const RoadmapController = {
             if(!Error) {
 
                 RoadmapService.createRoadmap(Data).spread(async (roadmap,created) => {
+                    if( (Request.body.type && Request.body.type == 0) || !Request.body.type)  {
+                        await RoadmapService.createUserRoadmap(Data.creator_id, roadmap.id);
+                        Response.send(roadmap);
+                    } else if(Request.body.type && Request.body.type == 1) {
+                        await RoadmapService.createMentorshipRoadmap(Data.creator_id, roadmap.id);
+                        Response.send(roadmap)
+                    }
 
-                    await RoadmapService.createUserRoadmap(Data.creator_id, roadmap.id);
-                    Response.send(roadmap);
                 }).catch(Error => {
                     Response.send(400, Error);
                 });
@@ -170,6 +176,11 @@ const RoadmapController = {
                 model: SkillCategory
               },
               {
+                model: User,
+                as: 'mentor',
+
+              },
+              {
                 model: Checkpoint,
                 include: [Skill]
               }
@@ -178,17 +189,26 @@ const RoadmapController = {
           offset: offset,
           order:[['name','ASC']]
         });
+
+        let roadmapsArray = [];
         for(let roadmap of roadmaps) {
-          for(let user of roadmap.users) {
-            if(Request.auth.id == user.dataValues.id) {
-              roadmap.dataValues.assigned = true;
-              break;
+
+              for(let user of roadmap.users) {
+                if(Request.auth.id == user.dataValues.id) {
+                  roadmap.dataValues.assigned = true;
+                  break;
+                }
+              }
+            if((roadmap.mentor[0] && (roadmap.mentor[0].id == Request.auth.id)) || roadmap.dataValues.assigned == true) {
+                continue;
             }
-          }
+
+            roadmapsArray.push(roadmap);
+
         }
-        Response.send(roadmaps);
+        Response.send(roadmapsArray);
      } catch(Error) {
-       Response.send(400, Error.message)
+       Response.send(400, Error.stack)
      }
 
     },
@@ -234,13 +254,26 @@ const RoadmapController = {
                 model:SkillCategory
             }, {
                model:User
+            }, {
+                model:User,
+                as:'mentor'
             }]
         }).then(roadmap => {
+            roadmap.dataValues.Mentor = roadmap.mentor[0];
             roadmap.dataValues.assigned = false;
+            roadmap.dataValues.mentor = false;
+
             for(let user of roadmap.users) 
             {
                 if(user.id == Request.auth.id) {
                     roadmap.dataValues.assigned = true;
+                    break;
+                }
+            }
+            for(let user of roadmap.mentor)
+            {
+                if(user.id == Request.auth.id) {
+                    roadmap.dataValues.mentor = true;
                     break;
                 }
             }
@@ -270,7 +303,7 @@ const RoadmapController = {
             creator_id: Request.auth.id,
             roadmap_id: Request.params.roadmap_id,
             checkpoint_id: Request.params.checkpoint_id
-        })
+        });
         
         console.log(check);
 
@@ -279,8 +312,28 @@ const RoadmapController = {
             return;
         }
 
-        Joi.validate(body, TodoSchema.create, function(Error, Data) {
+        Joi.validate(body, TodoSchema.create, async function(Error, Data) {
             if(!Error) {
+                let roadmap = await Roadmap.findById(Request.params.roadmap_id,{
+                    include: [
+                        {
+                            model:User,
+                            as:'mentor',
+                            through: {
+                                where: {
+                                    user_id: Request.auth.id
+                                }
+                            }
+                        }
+                    ]
+                });
+
+                if(roadmap.mentor.length > 0) {
+                    let createTodoFromMentor = RoadmapService.createTodoFromMentor.bind(RoadmapService);
+                    createTodoFromMentor(Request, Response, roadmap, Data);
+                    return;
+                }
+
                 Todo.create(Data).then( todo => {
                    UserTodos.create({
                        todo_id: todo.id,
@@ -365,12 +418,79 @@ const RoadmapController = {
                 user_id: Request.auth.id,
                 todo_id: Request.params.id,
             },
-        }).then(todo => {
-            if(todo) {
-                todo.update({
+            include:[{
+                model: Todo,
+                include:[{
+                    model: Checkpoint,
+                    include: [
+                        {
+                            model: Todo,
+                            include: [
+                                {
+                                    model:UserTodos,
+                                    as: 'todos_usertodos',
+                                    where: {
+                                        user_id:Request.auth.id
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }]
+            }]
+        }).then(user_todo => {
+            if(user_todo) {
+                user_todo.update({
                     checked: Request.body.checked
-                }).then(todo => {
-                    Response.send({success: true})
+                }).then(  user_todo_updated => {
+
+                    let UserTodosArray = user_todo.todo.checkpoint.todos.map(item => {
+
+                        if (item.todos_usertodos[0].id != user_todo_updated.id) {
+                            return item.todos_usertodos[0]
+                        }
+                    });
+
+                    let checkedCount = 0;
+
+                    if(user_todo_updated.checked == 1) {
+                        checkedCount = 1
+                    }
+
+                    for(let usertodo of UserTodosArray) {
+                        if(usertodo && usertodo.checked == 1) {
+                            checkedCount++;
+                        }
+                    }
+                    console.log(checkedCount, UserTodosArray.length);
+                    if(checkedCount ==  UserTodosArray.length ){
+                       UserCheckpoints.findOne({ 
+                            checkpoint_id: Request.params.checkpoint_id,
+                            roadmap_id: Request.params.roadmap_id,
+                            user_id: Request.auth.id
+                        }).then(checkpoint => {
+                            if(checkpoint.checked != 1) {
+                                checkpoint.update({
+                                    checked: 1
+                                });
+                            }
+
+                            Response.send({success: true, checkpoint: checkpoint})
+                        });
+                    } else {
+                        UserCheckpoints.findOne({
+                            checkpoint_id: Request.params.checkpoint_id,
+                            roadmap_id: Request.params.roadmap_id,
+                            user_id: Request.auth.id
+                        }).then(checkpoint => {
+                            if(checkpoint.checked != 0) {
+                                checkpoint.update({
+                                    checked: 0
+                                });
+                            }
+                            Response.send({success: true, checkpoint: checkpoint})
+                        })
+                    }
                 }).catch(Error => {
                     Response.send(400, {success: false, error: Error.message})
                 })
@@ -391,7 +511,7 @@ const RoadmapController = {
             where: {
                 checkpoint_id: Request.params.checkpoint_id,
                 id: Request.params.id,
-                craetor_id: Request.auth.id
+                creator_id: Request.auth.id
             }
         }).then( todo => {
             if(todo) {
@@ -546,8 +666,29 @@ const RoadmapController = {
         body.roadmap_id = Request.params.id
         body.creator_id = Request.auth.id;
 
-        Joi.validate(body, CheckpointSchema.create, function(Error, Data) {
+        Joi.validate(body, CheckpointSchema.create, async function(Error, Data) {
             if( !Error ) {
+
+                let roadmap = await Roadmap.findById(body.roadmap_id,{
+                    include: [
+                        {
+                            model:User,
+                            as:'mentor',
+                            through: {
+                                where: {
+                                    user_id: Request.auth.id
+                                }
+                            }
+                        },{
+                            model: User,
+                        }
+                    ]
+                });
+
+                if(roadmap.mentor.length > 0) {
+                    RoadmapService.createCheckpointFromMentor(Request, Response, roadmap, Data);
+                    return;
+                }
 
                 Checkpoint.create(Data).then( async checkpoint => {
                     
@@ -775,6 +916,17 @@ const RoadmapController = {
         });
         
     },
+
+    setMentor: function(Request, Response) {
+        Mentorship.create({
+            roadmap_id: Request.params.id,
+            user_id: Request.body.id
+        }).then(mentorship => {
+            Response.send({success:true})
+        }).catch(Error => {
+            Response.send(Error)
+        })
+    }
 };
 
 module.exports = RoadmapController;

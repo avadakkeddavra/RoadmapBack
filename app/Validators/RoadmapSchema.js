@@ -4,6 +4,7 @@ const CreateSchema = Joi.object().keys({
     name: Joi.string().min(3).max(255).required(),
     creator_id: Joi.number().min(1).required(),
     description: Joi.string(),
+    type: Joi.number().valid([0,1]),
     category_id: Joi.number().min(1).required()
 });
 
