@@ -85,6 +85,7 @@ router.get('/users', authMiddleware.auth, UserController.getAllUsers);
 router.get('/user/allskills', authMiddleware.auth, UserController.getAllUsersSkills);
 router.get('/user/:id', authMiddleware.auth.bind(authMiddleware), UserController.getUser);
 router.get('/user/:id/skillslist', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkills);
+router.get('/user/:id/skills', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillsWithoutPagination);
 router.get('/user/:user_id/skills/:id', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillById);
 router.get('/user/:id/logs', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillsLogs);
 router.get('/user/:user_id/logs/skills/:id', authMiddleware.auth.bind(authMiddleware), UserController.getUserSkillLogById);

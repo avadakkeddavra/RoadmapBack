@@ -255,24 +255,23 @@ const UserController = {
 				where.categoryId = Request.query.id;
 			}
 
-
-      Skill.findAll({
-				where: where,
-        include: [
-          {
-              model:UserSkill,
-              where:whereUser,
-							include: [User]
-          },
-          {
-              model: SkillCategory
-          }
-        ],
-				limit:10,
-				offset:offset,
-        order:[
-            [UserSkill,'mark', "DESC"]
-        ]
+		  Skill.findAll({
+			where: where,
+			include: [
+			  {
+				  model:UserSkill,
+				  where:whereUser,
+				  include: [User]
+			  },
+			  {
+				  model: SkillCategory
+			  }
+			],
+			  limit:10,
+			  offset:offset,
+			order:[
+				[UserSkill,'mark', "DESC"]
+			]
 
       }).then(async skills => {
 
@@ -296,6 +295,47 @@ const UserController = {
 			Response.status(400);
 			Response.send({success:false, error: Error});
 		}
+
+	},
+
+	getUserSkillsWithoutPagination: (Request, Response) => {
+        // Skill.findAll({
+        //     include: [
+        //         {
+        //             model:UserSkill,
+        //             where:{
+        //             	userId: Request.params.id
+				// 	          },
+        //             include: [User]
+        //         },
+        //         {
+        //             model: SkillCategory
+        //         }
+        //     ],
+        //     order:[
+        //         [UserSkill,'mark', "DESC"]
+        //     ]
+        //
+        // }).then(skills => {
+        // 	Response.send(skills)
+		    // });
+
+        UserSkill.findAll({
+          where: {
+            userId: Request.params.id,
+          },
+          include: [
+            {
+              model:User
+            },
+            {
+              model: Skill,
+              include:[SkillCategory]
+            }
+          ]
+        }).then(userskills => {
+          Response.send(userskills);
+        })
 
 	},
 	getUserSkillById: async function(Request, Response) {
