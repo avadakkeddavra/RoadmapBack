@@ -8,7 +8,7 @@ const Skill = GlobalModel.skills;
 const UserRoadmap = GlobalModel.user_roadmaps;
 const Checkpoint = GlobalModel.checkpoints;
 const UserCheckpoints = GlobalModel.user_checkpoints;
-const SkillCategory = GlobalModel.skillsCategories; 
+const SkillCategory = GlobalModel.skillsCategories;
 const Mentorship = GlobalModel.mentorship;
 
 const Todo = GlobalModel.todos;
@@ -86,6 +86,7 @@ const RoadmapService = {
                     roadmap_id: roadmap.id
                 })
             }
+            todo.dataValues.creator = await todo.getCreator();
             Response.send({todo});
         })
 
@@ -108,14 +109,14 @@ const RoadmapService = {
                     roadmap_id: Body.roadmap_id
                 }
             });
-    
+
             let UserCheckpointExistance = await UserCheckpoints.findOne({
                 where: {
                     user_id: Body.id,
                     checkpoint_id: Body.checkpoint_id
                 }
             });
-    
+
             if(!UserRoadmapExistence || !UserCheckpointExistance) {
                 return false;
             } else {
@@ -123,7 +124,7 @@ const RoadmapService = {
             }
         } catch(Error) {
             return Error;
-        } 
+        }
     },
 
     beforeTodoAssign: async (Body) => {
@@ -134,16 +135,16 @@ const RoadmapService = {
                     roadmap_id: Body.roadmap_id
                 }
             });
-    
+
             let UserCheckpointExistance = await UserCheckpoints.findOne({
                 where: {
                     user_id: Body.user_id,
                     checkpoint_id: Body.checkpoint_id
                 }
             });
-    
+
             let TodoExistance = await Todo.findById(Body.id);
-    
+
             if(!UserRoadmapExistence || !UserCheckpointExistance || TodoExistance.checkpoint_id !== Number(Request.params.checkpoint_id)) {
                 return false;
             } else {

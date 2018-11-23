@@ -299,27 +299,6 @@ const UserController = {
 	},
 
 	getUserSkillsWithoutPagination: (Request, Response) => {
-        // Skill.findAll({
-        //     include: [
-        //         {
-        //             model:UserSkill,
-        //             where:{
-        //             	userId: Request.params.id
-				// 	          },
-        //             include: [User]
-        //         },
-        //         {
-        //             model: SkillCategory
-        //         }
-        //     ],
-        //     order:[
-        //         [UserSkill,'mark', "DESC"]
-        //     ]
-        //
-        // }).then(skills => {
-        // 	Response.send(skills)
-		    // });
-
         UserSkill.findAll({
           where: {
             userId: Request.params.id,
@@ -539,7 +518,7 @@ const UserController = {
 				for(let roadmap of roadmaps) {
 					roadmap.destroy();
 				}
-			}) 
+			})
 		}
 
 		SkillCategory.findAll({
@@ -691,14 +670,14 @@ const UserController = {
 		let roadmap_id = Request.params.roadmap_id;
 		let user_id = Request.auth.id;
 		let id = Request.params.id;
-	
-		
+
+
 		if(!UserRoadmapAssigned) {
 			id = RoadmapCreator.creator_id;
 		}
-	
+
 		const CheckpointsArray = await RoadmapService.getUserCheckpoints(id, roadmap_id, user_id);
-	
+
 		Response.send(CheckpointsArray.checkpoints);
 	} catch(Error) {
 		Response.send({success: false, message: Error.message, stack: Error.stack});

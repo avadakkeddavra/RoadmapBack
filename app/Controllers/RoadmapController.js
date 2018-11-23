@@ -24,7 +24,7 @@ const TodoSchema = require('./../Validators/TodoSchema');
 const Joi = require('joi');
 /**
  *  SERVICES
- * 
+ *
  */
 const RoadmapService = require('./../Services/Roadmap');
 
@@ -263,7 +263,7 @@ const RoadmapController = {
             roadmap.dataValues.assigned = false;
             roadmap.dataValues.mentor = false;
 
-            for(let user of roadmap.users) 
+            for(let user of roadmap.users)
             {
                 if(user.id == Request.auth.id) {
                     roadmap.dataValues.assigned = true;
@@ -304,7 +304,7 @@ const RoadmapController = {
             roadmap_id: Request.params.roadmap_id,
             checkpoint_id: Request.params.checkpoint_id
         });
-        
+
         console.log(check);
 
         if(check == false ) {
@@ -412,6 +412,7 @@ const RoadmapController = {
         }
     },
 
+
     checkTodo: async function(Request, Response) {
         UserTodos.findOne({
             where: {
@@ -464,7 +465,7 @@ const RoadmapController = {
                     }
                     console.log(checkedCount, UserTodosArray.length);
                     if(checkedCount ==  UserTodosArray.length ){
-                       UserCheckpoints.findOne({ 
+                       UserCheckpoints.findOne({
                             checkpoint_id: Request.params.checkpoint_id,
                             roadmap_id: Request.params.roadmap_id,
                             user_id: Request.auth.id
@@ -502,7 +503,7 @@ const RoadmapController = {
             Response.send(400, Error.message)
         })
     },
-   
+
 
 
 
@@ -523,17 +524,17 @@ const RoadmapController = {
                         Response.send({success: false, error: Error})
                     }
                 })
-               
+
             }
         })
     },
 
 
-/** 
+/**
  *  CHECKPOINTS
- * 
- * 
-*/      
+ *
+ *
+*/
     assignToCheckpoint: async function(Request, Response) {
 
         const body = {
@@ -691,7 +692,7 @@ const RoadmapController = {
                 }
 
                 Checkpoint.create(Data).then( async checkpoint => {
-                    
+
                     UserCheckpoints.findOne({
                         where: {
                             user_id: Request.auth.id,
@@ -773,7 +774,32 @@ const RoadmapController = {
             Response.send(400, Error)
         })
     },
+    forceDeleteTodo: async (Request, Response) => {
+      Roadmap.findById(Request.params.roadmap_id, {
+        include: [
+          {
+            model: User,
+            as: 'mentor',
+            where: {
+              id: Request.auth.id
+            }
+          }
+        ]
+      }).then((mentor) => {
+        if(mentor) {
+          Todo.destroy({
+            where:{
+              id: Request.params.id
+            }
+          }).then((todo) => {
+            Response.send({ success: true, data: todo })
+          }).catch((err) => {
+            Response.status(500).send({ success: false, message: err.message });
+          })
+        }
 
+      })
+    },
     forceDeleteCheckpoint: async (Request, Response) => {
         Checkpoint.findOne({
             where: {
@@ -863,6 +889,24 @@ const RoadmapController = {
         }
 
     },
+    updateTodosPosition: async (Request, Response) => {
+      if(Request.body.todos) {
+        let i = 0;
+        for(let todo of Request.body.todos) {
+          await UserTodos.update({
+            index_number: todo.index_number
+          },{
+            where: {
+              user_id: Request.auth.id,
+              roadmap_id: todo.roadmap_id,
+              todo_id: todo.todo_id
+            }
+          });
+          i++;
+        }
+        Response.send({ success: true, updated: i });
+      }
+    },
     mergeCheckpoint: (Request, Response) => {
         Checkpoint.findById(Request.params.id,{
             include: [
@@ -884,13 +928,13 @@ const RoadmapController = {
                     }
                 },User]
             });
-            
+
             UserCheckpoints.findOrCreate({
                 where: {
                     user_id: Request.auth.id,
                     checkpoint_id: checkpoint.id,
                     roadmap_id: Request.params.roadmap_id
-                } 
+                }
             }).spread(async (checkpointMerge, create) => {
 
                 for(let todo of todos) {
@@ -900,7 +944,7 @@ const RoadmapController = {
                         todo_id: todo.id,
                         roadmap_id: Request.params.roadmap_id,
                     });
-                    
+
                 }
                 checkpoint.dataValues.todos = [];
                 checkpoint.dataValues.todos = todos;
@@ -910,11 +954,11 @@ const RoadmapController = {
                 return;
             })
 
-           
+
         }).catch(Error => {
             Response.send(Error);
         });
-        
+
     },
 
     setMentor: function(Request, Response) {

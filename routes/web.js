@@ -134,11 +134,13 @@ router.post('/roadmap/:roadmap_id/checkpoint/:id/merge',authMiddleware.auth,  Ro
  *  TODOS ROUTERS
  *
  * */
+router.put('/roadmap/user/updateTodo', authMiddleware.auth, RoadmapController.updateTodosPosition);
 router.post('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo', authMiddleware.auth, RoadmapController.createTodo);
 router.put('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id', authMiddleware.auth, RoadmapController.updateTodo)
 router.post('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id/assign', authMiddleware.auth, RoadmapController.assignTodo);
 router.delete('/todo/:id/unassign', authMiddleware.auth, RoadmapController.deleteAssignTodo);
 router.put('/roadmap/:roadmap_id/checkpoint/:checkpoint_id/todo/:id/check', authMiddleware.auth, RoadmapController.checkTodo);
+router.delete('/roadmap/:roadmap_id/todo/:id', authMiddleware.auth, RoadmapController.forceDeleteTodo);
 
 router.post('/roadmap/:id/setmentor', authMiddleware.auth, authMiddleware.admin, RoadmapController.setMentor);
 module.exports = router;
