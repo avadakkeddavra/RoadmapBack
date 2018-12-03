@@ -46,7 +46,7 @@ const RoadmapService = {
     createCheckpointFromMentor: async (Request, Response, roadmap, body) => {
         let AssignedUsers = roadmap.users;
 
-        Checkpoint.create(body).then(checkpoint => {
+        Checkpoint.create(body).then(async checkpoint => {
             for(let user of AssignedUsers) {
                 UserCheckpoints.create({
                     user_id: user.id,
@@ -54,7 +54,7 @@ const RoadmapService = {
                     roadmap_id: roadmap.id
                 })
             }
-            checkpoint.getSkill();
+            checkpoint.dataValues.skill = await checkpoint.getSkill();
             Response.send(checkpoint);
         });
     },
@@ -209,6 +209,53 @@ const RoadmapService = {
                     ]
                 }
             ]
+        })
+    },
+    assignToMentorsRoadmap: async (roadmap, data) => {
+        let that = RoadmapService;
+        return new Promise(async (resolve, reject) => {
+
+            await that.createUserRoadmap(data.user_id, data.roadmap_id);
+
+          Checkpoint.findAll({
+            where: {
+              roadmap_id: data.roadmap_id,
+              creator_id: roadmap.mentor[0].id
+            }
+          }).then(async checkpoints => {
+              let checkpointIds = [];
+              if(checkpoints && checkpoints.length > 0) {
+                for (let i in checkpoints) {
+                  let checkpoint = checkpoints[i];
+                  checkpointIds.push(checkpoint.id);
+                  await that.createUserCheckpoint(data.user_id, checkpoint.id, roadmap.id, checkpoint.index_number);
+                }
+              } else {
+                  resolve({ success: true });
+              }
+
+            Todo.findAll({
+              where: {
+                creator_id: roadmap.mentor[0].id,
+                checkpoint_id: checkpointIds
+              }
+            }).then(async todos => {
+
+                if(todos && todos.length > 0) {
+                  for(let todo of todos) {
+                    await that.createUserTodo(data.user_id, todo.id, 0, roadmap.id)
+                  }
+                }
+
+                resolve({success: true});
+
+            }).catch(Error => {
+              reject(Error);
+            });
+
+          }).catch((error) => {
+              reject(error);
+          })
         })
     }
 }

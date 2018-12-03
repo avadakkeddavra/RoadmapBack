@@ -121,7 +121,6 @@ router.delete('/roadmap/:roadmap_id/checkpoint/:id', authMiddleware.auth, Roadma
 
 
 router.get('/roadmap/:id/checkpoint/discover',authMiddleware.auth,  RoadmapController.discover);
-router.get('/roadmap/:id/checkpoint/discovertest',authMiddleware.auth,  RoadmapController.discover);
 
 router.post('/roadmap/:id/checkpoint',authMiddleware.auth,  RoadmapController.createCheckpoint);
 

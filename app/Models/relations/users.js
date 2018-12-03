@@ -13,4 +13,3 @@ module.exports = function (db) {
     db.users.belongsToMany(db.roadmaps, {as:'mentor_roadmaps', through:'mentorship', foreignKey:'user_id'});
 
   }
-   
