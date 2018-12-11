@@ -247,12 +247,18 @@ const UserController = {
 			let where = {};
 			if(Request.params.id) {
 				whereUser = {
-                    userId:Request.params.id
+            userId:Request.params.id
 				}
 			}
 
 			if(Request.query.id !== 'null') {
 				where.categoryId = Request.query.id;
+			}
+
+			if(Request.query.name != ''){
+				where.title = {
+					[Op.like] : '%'+Request.query.name+'%'
+				};
 			}
 
 		  Skill.findAll({
@@ -276,7 +282,7 @@ const UserController = {
       }).then(async skills => {
 
         let total = 0;
-      	if(Request.query.id === 'null') {
+      	if(Request.query.id === 'null' && !where.title) {
              total = await UserSkill.count({
                 where:{
                     userId: Request.params.id
@@ -591,29 +597,30 @@ const UserController = {
   getUserRoadmaps: async function(Request, Response) {
       User.findById(Request.params.id, {
           include: [
-              {
-				  model: Roadmap,
-				  as:'roadmaps',
-				  include:[
-					{
-						 model:User,
-						 as: 'Creator'
-					},
-					{
-					  model:User
-					},
-					{
-					  model: SkillCategory
-					},
-					{
-					  model: Checkpoint,
-					  include: [Skill]
-					}
-				]
+          		{
+									model: Roadmap,
+									as:'roadmaps',
+									include:[
+									{
+										 model:User,
+										 as: 'Creator'
+									},
+									{
+										model:User
+									},
+									{
+										model: SkillCategory
+									},
+									{
+										model: Checkpoint,
+										include: [Skill]
+									}
+								],
+                order:[['updated_at','DESC']]
               },
-			  {
-			  	model: Roadmap,
-				as: 'mentor_roadmaps',
+			  			{
+			  				  model: Roadmap,
+									as: 'mentor_roadmaps',
                   include:[
                       {
                           model:User,
@@ -629,10 +636,17 @@ const UserController = {
                           model: Checkpoint,
                           include: [Skill]
                       }
-                  ]
-			  }
-          ]
+                  ],
+              }
+          ],
       }).then(user => {
+        	user.roadmaps.sort((a,b) => {
+      			if(a.user_roadmaps.updated_at < b.user_roadmaps.updated_at) {
+      				return 1
+						} else {
+      				return -1;
+						}
+					})
           Response.send({roadmaps:user.roadmaps, mentor_roadmaps: user.mentor_roadmaps});
       }).catch(Error => {
       	Response.send(Error.message)
@@ -657,13 +671,13 @@ const UserController = {
         });
 
         if(UserRoadmapMentorship) {
-            RoadmapService.getRoadmapCheckpoints(Request.params.roadmap_id)
+            RoadmapService.getRoadmapCheckpoints(Request.params.roadmap_id, Request.auth.id)
                 .then(response => {
-                    Response.send(response.checkpoints)
+                    Response.send(response)
                 })
                 .catch(error => {
                     Response.send(error);
-                })
+                });
             return;
         }
 

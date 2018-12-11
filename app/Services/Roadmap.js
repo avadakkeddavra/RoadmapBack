@@ -191,25 +191,61 @@ const RoadmapService = {
         })
     },
 
-    getRoadmapCheckpoints: async (roadmap_id) => {
-        return await Roadmap.findById(roadmap_id, {
+    getRoadmapCheckpoints: async (roadmap_id, mentor_id) => {
+        return new Promise((resolve, reject) => {
+          Roadmap.findById(roadmap_id, {
             include: [
-                {
-                    model:Checkpoint,
-                    include: [{
-                        model:Todo,
-                        include:[User,{
-                            model:User,
-                            as: 'creator'
-                        }]
-                    },
-                        {
-                            model: Skill
-                        }
-                    ]
-                }
+              {
+                model:Checkpoint,
+                include: [{
+                  model:Todo,
+                  include:[User,{
+                    model:User,
+                    as: 'creator'
+                  }]
+                },
+                  {
+                    model: Skill
+                  }
+                ]
+              }
             ]
-        })
+          }).then((data) => {
+              const checkpoints = data.checkpoints;
+            UserCheckpoints.findAll({
+              where: {
+                user_id: mentor_id,
+                roadmap_id: roadmap_id
+              },
+              include: [
+                {
+                  model:Checkpoint,
+                  as: 'checkpoints',
+                  include: [{
+                    model:Todo,
+                    include:[User,{
+                      model:User,
+                      as: 'creator'
+                    }]
+                  },
+                    {
+                      model: Skill
+                    }
+                  ]
+                }
+              ]
+            }).then((mergedCheckpoints) => {
+               mergedCheckpoints.map((item) => {
+                checkpoints.push(item.checkpoints)
+               });
+               resolve(checkpoints);
+            }).catch((error) => {
+                reject(error);
+            })
+          }).catch((error) => {
+              reject(error);
+          })
+        });
     },
     assignToMentorsRoadmap: async (roadmap, data) => {
         let that = RoadmapService;

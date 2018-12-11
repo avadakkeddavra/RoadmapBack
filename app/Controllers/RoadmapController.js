@@ -270,12 +270,20 @@ const RoadmapController = {
             },{
                 model:SkillCategory
             }, {
-               model:User
+               model:User,
             }, {
                 model:User,
                 as:'mentor'
             }]
-        }).then(roadmap => {
+        }).then(async roadmap => {
+            await UserRoadmap.update({updated_at: new Date()},{
+                where: {
+                  user_id: Request.auth.id,
+                  roadmap_id: roadmap.id
+                }
+              }
+            );
+
             roadmap.dataValues.Mentor = roadmap.mentor[0];
             roadmap.dataValues.assigned = false;
             roadmap.dataValues.mentor = false;
@@ -484,17 +492,20 @@ const RoadmapController = {
                     console.log(checkedCount, UserTodosArray.length);
                     if(checkedCount ==  UserTodosArray.length ){
                        UserCheckpoints.findOne({
-                            checkpoint_id: Request.params.checkpoint_id,
-                            roadmap_id: Request.params.roadmap_id,
-                            user_id: Request.auth.id
+                         where: {
+                           checkpoint_id: Request.params.checkpoint_id,
+                           roadmap_id: Request.params.roadmap_id,
+                           user_id: Request.auth.id
+                         }
                         }).then(checkpoint => {
-                            if(checkpoint.checked != 1) {
+
+                         if(checkpoint.checked != 1) {
                                 checkpoint.update({
                                     checked: 1
                                 });
                             }
 
-                            Response.send({success: true, checkpoint: checkpoint})
+                         Response.send({success: true, checkpoint: checkpoint});
                         });
                     } else {
                         UserCheckpoints.findOne({
@@ -958,16 +969,33 @@ const RoadmapController = {
         include: [
           {
             model:Todo,
+            include: [
+              {
+                model: User,
+                as: 'creator'
+              }
+            ]
           }
         ]
       }).then(async (checkpoint) => {
         if(checkpoint) {
           if(mentor[0] && mentor[0].id === Request.auth.id) {
-            roadmap.users.forEach(async (user) => {
-              await UserCheckpoints.create({
-                user_id: user.id,
+            await UserCheckpoints.findOrCreate({
+              where: {
+                user_id: mentor[0].id,
                 checkpoint_id: checkpoint.id,
-                roadmap_id: roadmap.id
+                roadmap_id: roadmap.id,
+                checked: 0
+              }
+            });
+            roadmap.users.forEach(async (user) => {
+              await UserCheckpoints.findOrCreate({
+                where: {
+                  user_id: user.id,
+                  checkpoint_id: checkpoint.id,
+                  roadmap_id: roadmap.id,
+                  checked: 0
+                }
               });
               checkpoint.todos.forEach(async (todo) => {
                 if(todo.creator_id === checkpoint.creator_id) {
@@ -975,7 +1003,8 @@ const RoadmapController = {
                     where: {
                       user_id: user.id,
                       todo_id: todo.id,
-                      roadmap_id: roadmap.id
+                      roadmap_id: roadmap.id,
+                      checked: 0
                     }
                   })
                 }
@@ -995,10 +1024,11 @@ const RoadmapController = {
                   where: {
                     user_id: Request.auth.id,
                     todo_id: todo.id,
-                    roadmap_id: roadmap.id
+                    roadmap_id: roadmap.id,
+                    checked: 0
                   }
                 });
-                todo.dataValues.todos_usertodos = userTodo;
+                todo.dataValues.todos_usertodos.push(userTodo);
               }
             })
           }
