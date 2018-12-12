@@ -262,22 +262,22 @@ const UserController = {
 			}
 
 		  Skill.findAll({
-			where: where,
-			include: [
-			  {
-				  model:UserSkill,
-				  where:whereUser,
-				  include: [User]
-			  },
-			  {
-				  model: SkillCategory
-			  }
-			],
-			  limit:10,
-			  offset:offset,
-			order:[
-				[UserSkill,'mark', "DESC"]
-			]
+				where: where,
+				include: [
+					{
+						model:UserSkill,
+						where:whereUser,
+						include: [User]
+					},
+					{
+						model: SkillCategory
+					}
+				],
+					limit:10,
+					offset:offset,
+				order:[
+					[UserSkill,'mark', "DESC"]
+				]
 
       }).then(async skills => {
 
@@ -290,7 +290,13 @@ const UserController = {
             });
 				} else {
       		 total = await Skill.count({
-              where:where
+              where:where,
+             	include: [
+								 {
+									 model:UserSkill,
+									 where:whereUser
+								 }
+               ]
           });
 				}
 
@@ -378,7 +384,6 @@ const UserController = {
 		}
 	},
 	getUserSkillLogById: async function(Request, Response) {
-
         try{
             SkillLogs.findAll({
                 where:{
@@ -387,9 +392,9 @@ const UserController = {
                 include: [
                     {
                         model:UserSkill,
-						where:{
+												where:{
                         	skillId: Request.params.id
-						},
+												},
                         include: [
                             {
                                 model:Skill,

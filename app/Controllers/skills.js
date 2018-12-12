@@ -134,7 +134,7 @@ skills.addSkills = async function (request, response)
                     if(roadmap) {
                         let flag = false;
                         for(let check of roadmap.checkpoints) {
-                            if(check.skill_id === userSkills.skillId) {   
+                            if(check.skill_id === userSkills.skillId) {
                                 flag = true;
 
                                 if( userSkills.disposition <= 6 ) {
@@ -160,7 +160,7 @@ skills.addSkills = async function (request, response)
                     }
                     }).catch( Error => {
                         response.send(Error.message)
-                    }) 
+                    })
                 }
 
                 response.send(userSkills);
@@ -352,23 +352,15 @@ skills.getSkillsByCategories = async function(Request, Response){
 skills.getLogs = async function(Request, Response) {
 
     Joi.validate(Request.body, SkillsSchema.logs, function(Error, Data) {
-
-
-
         if(!Error) {
-
-            var page = 0;
-
+            let page = 0;
             if(Request.query.page) {
                 page = Request.query.page;
             }
-
             var offset = 0;
-
             if(page > 1){
                 offset = (page - 1)*10;
             }
-
             if(Object.keys(Data).indexOf('createdAt') !== -1)
             {
                 Data.createdAt = {
@@ -432,7 +424,13 @@ skills.getLogs = async function(Request, Response) {
                     total = skills.length;
                 } else {
                     total = await skillLogs.count({
-                        where: Data
+                        where: Data,
+                        include: [
+                          {
+                            model: UserSkills,
+                            where: UserSkillsWhere
+                          }
+                        ]
                     });
                 }
 
