@@ -222,6 +222,19 @@ skills.createNewSkill = async function (Request, Response)
                     id: needSkill['id']
                 });
             }
+            User.findAll().then(async (users) => {
+                users.forEach((user) => {
+                    UserSkills.findOrCreate({
+                      where: {
+                          userId: user.id,
+                          mark: 1,
+                          disposition: 1,
+                          skillId: skill.id,
+                          comment: ''
+                      }
+                    })
+                })
+            });
             Response.status(200);
             Response.send({success:true,data:skill});
         } else {

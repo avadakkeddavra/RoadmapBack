@@ -77,9 +77,7 @@ const RoadmapController = {
         Joi.validate(body, RoadmapSchema.assign, function(Error, Data) {
 
             if(!Error) {
-              if(roadmap && roadmap.mentor) {
-
-                // Response.send(roadmap);return;
+              if(roadmap && roadmap.mentor[0]) {
                 RoadmapService.assignToMentorsRoadmap(roadmap, body).then((success) => {
                   Response.send(success);
                 }).catch((Error) => {

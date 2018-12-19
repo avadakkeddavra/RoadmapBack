@@ -725,11 +725,6 @@ const UserController = {
 			include: [
 				{
 					model: Checkpoint,
-					where: {
-						creator_id: {
-							[Op.ne]: Request.auth.id
-						}
-					},
 					include: [
 						{
 							model:User,

@@ -3,7 +3,6 @@ const User = require('./../Models/index').users;
 const UploadFileMiddleware = {
     upload: async function(Request,Response,next){
         var img = new Buffer(Request.body.avatar, 'base64');
-        console.log(img)
         var matches = Request.body.avatar.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/), response = {};
         if (matches.length !== 3) {
             Response.send({message: 'invalid request'})
