@@ -94,13 +94,15 @@ const CategoryController = {
             ],
             group:['skillsCategories.id']
         }).then(skills => {
+            for(let i in skills) {
+              let skill = skills[i];
+              if(skill.skills.length === 0) {
+                skills.splice(i,1);
+              }
+            }
 
             for(let i in skills) {
               let skill = skills[i];
-                if(skill.skills.length == 0) {
-                  skills.splice(i,1);
-                  continue;
-                }
                 let mark = Number(skill.skills[0].userSkills[0].dataValues['marks']);
                 let middleValue = Number(skill.skills[0].dataValues.count) * 3;
                 let highValue = Number(skill.skills[0].dataValues.count)* 6;
