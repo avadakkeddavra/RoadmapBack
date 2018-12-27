@@ -59,7 +59,8 @@ router.get('/category/user/:id/stat', CategoryController.getUserCategoryStat);
 *
 * */
 router.put('/skills', authMiddleware.auth.bind(authMiddleware), SkillsController.addSkills); // update User skill fields
-router.put('/skills/:id', authMiddleware.auth.bind(authMiddleware), authMiddleware.admin, SkillsController.update)
+router.get('/skills/legend', authMiddleware.auth.bind(authMiddleware), SkillsController.getLegend); // update User skill fields
+router.put('/skills/:id', authMiddleware.auth.bind(authMiddleware), authMiddleware.admin, SkillsController.update);
 
 router.post('/skills', authMiddleware.auth, SkillsController.createNewSkill);
 router.delete('/skills/:id', authMiddleware.auth, authMiddleware.admin, SkillsController.delete);

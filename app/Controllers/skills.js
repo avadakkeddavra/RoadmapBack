@@ -7,6 +7,7 @@ const UserSkills = globalModel.userSkills;
 const SkillsCategories = globalModel.skillsCategories;
 const Roadmap = globalModel.roadmaps;
 const Checkpoint = globalModel.checkpoints;
+const Legend = globalModel.disposition_legend;
 
 const skillLogs = globalModel.user_skills_logs;
 const sequelize = globalModel.sequelize;
@@ -204,39 +205,32 @@ skills.createNewSkill = async function (Request, Response)
     Joi.validate(Request.body, SkillsSchema.create, async function(Error, Data) {
         if(!Error) {
 
-            let needSkill = await Skills.find({
-                where: {
-                    title: Data.title
-                }
-            });
-            var skill = {};
-            if(needSkill == null) {
-                let newSkill = {
-                    title: Data.title,
-                    description: Data.description,
-                    categoryId: Data.category_id
-                };
-                skill = await Skills.create(newSkill);
-            } else {
-                skill = await Skills.find({
-                    id: needSkill['id']
-                });
-            }
-            User.findAll().then(async (users) => {
+            Skills.findOrCreate({
+              where: {
+                 categoryId: Data.category_id,
+                 description: Data.description,
+                 title: Data.title
+              }
+            }).spread((skill, created) => {
+              User.findAll().then(async (users) => {
                 users.forEach((user) => {
-                    UserSkills.findOrCreate({
-                      where: {
-                          userId: user.id,
-                          mark: 1,
-                          disposition: 1,
-                          skillId: skill.id,
-                          comment: ''
-                      }
-                    })
+                  UserSkills.findOrCreate({
+                    where: {
+                      userId: user.id,
+                      mark: 1,
+                      disposition: 1,
+                      skillId: skill.id,
+                      comment: ''
+                    }
+                  })
                 })
-            });
-            Response.status(200);
-            Response.send({success:true,data:skill});
+              });
+              Response.status(200);
+              Response.send({success:true,data:skill});
+            }).catch((error) => {
+                Response.status(500).send({ success: false, message: error.message })
+            })
+
         } else {
             Response.status(500);
             Response.send({success:false,error:Error.details});
@@ -587,6 +581,16 @@ skills.search = function(Request, Response) {
   }).catch( Error => {
       Response.send({error: Error.message});
   })
+};
+
+skills.getLegend = (req, res) => {
+    Legend.findAll({
+      order:[['value', 'ASC']]
+    }).then((legend) => {
+        res.send({ success: true, data: legend });
+    }).catch((error) => {
+        res.status(500).send({ success: false, error: error.message });
+    })
 };
 
 function findUser(data, user) {
