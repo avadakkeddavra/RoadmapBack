@@ -81,6 +81,11 @@ const CategoryController = {
                 {
                     model:Skill,
                     attributes: {include:[[sequelize.fn('COUNT', sequelize.col('skills.id')), 'count']]},
+                    where: {
+                      id: {
+                        [Op.ne]: null
+                      }
+                    },
                     include:[
                         {
                            model: UserSkill,
